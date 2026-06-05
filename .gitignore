@@ -1,0 +1,11 @@
+node_modules
+dist
+target
+.DS_Store
+*.tsbuildinfo
+.deploy
+.playwright-cli
+output
+frontend/node_modules
+frontend/dist
+backend/src/main/resources/static

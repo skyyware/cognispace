@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+  frontend-dev:
+    profiles:
+      - dev
+    image: node:22-alpine
+    working_dir: /workspace/frontend
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5179:5173"
+    volumes:
+      - .:/workspace
+    depends_on:
+      - app

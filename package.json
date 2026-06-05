@@ -1,0 +1,17 @@
+{
+  "name": "cognispace",
+  "version": "1.0.0",
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "install:all": "npm --prefix frontend install",
+    "backend:dev": "mvn -pl backend spring-boot:run",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "backend:test": "mvn -pl backend test",
+    "build": "node scripts/build-production.mjs",
+    "check": "mvn -pl backend test && npm --prefix frontend run check",
+    "deploy:stage": "npm run build && node scripts/deploy-stage.mjs"
+  },
+  "devDependencies": {}
+}

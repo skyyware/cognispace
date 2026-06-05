@@ -1,0 +1,65 @@
+import type { AgentResponse, KnowledgeSpace, PlatformHealth, SourceDocument } from "../types";
+
+export const fallbackDocuments: SourceDocument[] = [
+  {
+    id: "doc-supplier-risk",
+    title: "Supplier risk intake policy",
+    owner: "Procurement Excellence",
+    sensitivity: "restricted",
+    tags: ["supplier-risk", "procurement", "owner"],
+    content: "Supplier data can be connected to an AI assistant only when business owner, data sensitivity, supplier segment and allowed consuming applications are declared.",
+    ingestedAt: new Date().toISOString()
+  },
+  {
+    id: "doc-guardrails",
+    title: "Enterprise data handling guardrails",
+    owner: "AI Governance",
+    sensitivity: "confidential",
+    tags: ["governance", "privacy", "allowlist"],
+    content: "Confidential sources require explicit application allowlists, audit-friendly citations and confidence indicators in every generated response.",
+    ingestedAt: new Date().toISOString()
+  },
+  {
+    id: "doc-api",
+    title: "Agent API integration contract",
+    owner: "Platform Engineering",
+    sensitivity: "internal",
+    tags: ["api", "spring-boot", "integration"],
+    content: "Applications call the knowledge-space REST endpoint with prompt and optional history. The response contains answer, sources, suggested actions and confidence.",
+    ingestedAt: new Date().toISOString()
+  }
+];
+
+export const fallbackSpaces: KnowledgeSpace[] = [
+  {
+    id: "space-supplier-risk",
+    name: "Supplier Risk Brain",
+    purpose: "Answer supplier-risk questions with governed procurement, quality and API context.",
+    documentIds: fallbackDocuments.map((document) => document.id),
+    allowedApplications: ["procurement-assistant", "risk-dashboard", "supplier-portal"],
+    updatedAt: new Date().toISOString()
+  }
+];
+
+export const fallbackResponse: AgentResponse = {
+  answer: "Use the selected space as bounded context, keep source citations attached to the answer, confirm sensitivity and allowed applications, and route supplier-critical findings to human review before publishing them through the REST endpoint.",
+  confidence: 0.82,
+  suggestedActions: ["Review cited snippets", "Confirm application allowlist", "Expose answer and citations together via REST"],
+  sources: [
+    {
+      documentId: "doc-api",
+      title: "Agent API integration contract",
+      score: 4,
+      excerpts: ["The response contains answer, sources, suggested actions and confidence."]
+    }
+  ]
+};
+
+export const fallbackHealth: PlatformHealth = {
+  status: "fallback",
+  spaces: fallbackSpaces.length,
+  documents: fallbackDocuments.length,
+  restrictedDocuments: 2,
+  apiMode: "static-preview",
+  generatedAt: new Date().toISOString()
+};

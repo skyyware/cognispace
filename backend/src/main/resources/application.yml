@@ -1,0 +1,18 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: cognispace-api
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 365d
+          cache-public: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
