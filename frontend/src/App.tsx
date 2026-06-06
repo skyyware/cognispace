@@ -40,6 +40,7 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [creatingSource, setCreatingSource] = useState(false);
   const [apiState, setApiState] = useState<ApiState>("connecting");
+  const localLlmMode = health.apiMode.includes("local-open-source-llm");
 
   useEffect(() => {
     async function boot() {
@@ -142,7 +143,7 @@ export function App() {
           <a href="#api">REST API</a>
         </nav>
         <span className={`api-state ${apiState}`}>
-          {apiState === "online" ? "Live API connected" : apiState === "connecting" ? "Connecting to live API..." : "Static preview mode"}
+          {apiState === "online" ? (localLlmMode ? "Self-hosted LLM connected" : "Live API connected") : apiState === "connecting" ? "Connecting to live API..." : "Static preview mode"}
         </span>
       </header>
 

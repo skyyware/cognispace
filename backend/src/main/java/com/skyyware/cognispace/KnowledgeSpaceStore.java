@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -38,8 +39,11 @@ public class KnowledgeSpaceStore {
 
     private final Map<String, SourceDocument> documents = new ConcurrentHashMap<>();
     private final Map<String, KnowledgeSpace> spaces = new ConcurrentHashMap<>();
+    private final LocalLlmClient localLlmClient;
 
-    public KnowledgeSpaceStore() {
+    @Autowired
+    public KnowledgeSpaceStore(LocalLlmClient localLlmClient) {
+        this.localLlmClient = localLlmClient;
         SourceDocument supplierRisk = addDocument(new CreateDocumentRequest(
             "Supplier risk intake policy",
             "Procurement Excellence",
@@ -88,6 +92,10 @@ public class KnowledgeSpaceStore {
             List.of(supplierRisk.id(), dataPolicy.id(), qualityRunbook.id(), apiDesign.id()),
             List.of("procurement-assistant", "risk-dashboard", "supplier-portal")
         ));
+    }
+
+    KnowledgeSpaceStore() {
+        this(LocalLlmClient.disabled());
     }
 
     public List<SourceDocument> documents() {
@@ -156,7 +164,7 @@ public class KnowledgeSpaceStore {
         int restricted = (int) documents.values().stream()
             .filter(document -> Set.of("restricted", "confidential").contains(document.sensitivity()))
             .count();
-        return new PlatformHealth("ready", spaces.size(), documents.size(), restricted, "tool-augmented-rag", Instant.now());
+        return new PlatformHealth("ready", spaces.size(), documents.size(), restricted, localLlmClient.runtimeMode(), Instant.now());
     }
 
     public AgentResponse answer(String spaceId, ChatRequest request) {
@@ -191,14 +199,24 @@ public class KnowledgeSpaceStore {
         double confidence = Math.min(0.94, 0.5 + sources.stream().mapToDouble(GroundingSource::score).sum() / 24.0);
         confidence = Math.round(confidence * 100.0) / 100.0;
         List<String> riskFlags = riskFlags(prompt, space, sources, confidence);
-        String answer = composeAnswer(prompt, intent, space, sources, riskFlags);
+        List<String> suggestedActions = suggestedActions(intent, riskFlags);
+        String deterministicAnswer = composeAnswer(prompt, intent, space, sources, riskFlags);
+        Optional<LocalLlmResult> localLlmResult = localLlmClient.generate(
+            prompt,
+            intent,
+            space,
+            sources,
+            riskFlags,
+            suggestedActions
+        );
+        String answer = localLlmResult.map(LocalLlmResult::answer).orElse(deterministicAnswer);
         return new AgentResponse(
             answer,
             sources,
-            suggestedActions(intent, riskFlags),
+            suggestedActions,
             confidence,
             intent,
-            toolTrace(intent, space, sources, confidence, riskFlags),
+            toolTrace(intent, space, sources, confidence, riskFlags, localLlmResult),
             riskFlags
         );
     }
@@ -353,14 +371,34 @@ public class KnowledgeSpaceStore {
         return actions.stream().distinct().toList();
     }
 
-    private List<AgentToolCall> toolTrace(String intent, KnowledgeSpace space, List<GroundingSource> sources, double confidence, List<String> riskFlags) {
-        return List.of(
-            new AgentToolCall("classify_intent", "completed", "Detected " + intent + "."),
-            new AgentToolCall("retrieve_sources", "completed", "Searched " + space.documentIds().size() + " scoped sources and selected " + sources.size() + "."),
-            new AgentToolCall("rank_evidence", "completed", "Top source: " + sources.get(0).title() + " with confidence " + Math.round(confidence * 100) + "%."),
-            new AgentToolCall("check_governance", "completed", riskFlags.isEmpty() ? "No blocking risk flags." : riskFlags.size() + " risk flag(s) require review."),
-            new AgentToolCall("compose_grounded_answer", "completed", "Answer composed with citations, actions and confidence.")
+    private List<AgentToolCall> toolTrace(
+        String intent,
+        KnowledgeSpace space,
+        List<GroundingSource> sources,
+        double confidence,
+        List<String> riskFlags,
+        Optional<LocalLlmResult> localLlmResult
+    ) {
+        List<AgentToolCall> trace = new ArrayList<>();
+        trace.add(new AgentToolCall("classify_intent", "completed", "Detected " + intent + "."));
+        trace.add(new AgentToolCall("retrieve_sources", "completed", "Searched " + space.documentIds().size() + " scoped sources and selected " + sources.size() + "."));
+        trace.add(new AgentToolCall("rank_evidence", "completed", "Top source: " + sources.get(0).title() + " with confidence " + Math.round(confidence * 100) + "%."));
+        trace.add(new AgentToolCall("check_governance", "completed", riskFlags.isEmpty() ? "No blocking risk flags." : riskFlags.size() + " risk flag(s) require review."));
+        localLlmResult.ifPresentOrElse(
+            result -> trace.add(new AgentToolCall(
+                "compose_local_llm_answer",
+                "completed",
+                "Answer composed by self-hosted open-source model " + result.model() + " in " + result.durationMs() + " ms."
+            )),
+            () -> trace.add(new AgentToolCall(
+                "compose_grounded_answer",
+                "completed",
+                localLlmClient.isOllamaEnabled()
+                    ? "Local LLM unavailable or timed out; deterministic grounded composer used."
+                    : "Deterministic grounded composer used."
+            ))
         );
+        return List.copyOf(trace);
     }
 
     private List<String> safeList(List<String> values) {

@@ -11,6 +11,7 @@ export function SystemPanel({ apiState, health, selectedDocuments }: SystemPanel
   const restrictedInScope = selectedDocuments.filter((document) =>
     ["restricted", "confidential"].includes(document.sensitivity)
   ).length;
+  const localLlmMode = health.apiMode.includes("local-open-source-llm");
 
   return (
     <section className="panel system-panel">
@@ -26,7 +27,7 @@ export function SystemPanel({ apiState, health, selectedDocuments }: SystemPanel
         <article>
           {apiState === "online" ? <CheckCircle2 /> : <CircleDashed />}
           <div>
-            <strong>{apiState === "online" ? "Live REST API" : apiState === "connecting" ? "Connecting to REST API" : "Static preview"}</strong>
+            <strong>{apiState === "online" ? (localLlmMode ? "Self-hosted LLM" : "Live REST API") : apiState === "connecting" ? "Connecting to REST API" : "Static preview"}</strong>
             <span>{apiState === "connecting" ? "Loading health, spaces and source scope." : health.apiMode}</span>
           </div>
         </article>

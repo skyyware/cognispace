@@ -17,7 +17,9 @@ The backend is a Java Spring Boot REST API with an in-memory repository. It expo
 
 The chat endpoint runs a reproducible, tool-augmented RAG flow against the selected knowledge space. It classifies intent, expands query terms, retrieves scoped sources, ranks evidence, checks governance constraints and composes a cited answer with confidence, risk flags, suggested actions and a visible tool trace.
 
-This keeps the runtime useful without external model credentials while preserving the product mechanics required for a GenAI platform: scoping, source retrieval, citations, confidence, governance and downstream API integration.
+The composition step is provider-aware. The default runtime uses a deterministic composer and needs no external credentials. Stage can also run `COGNISPACE_LLM_PROVIDER=ollama`, which sends only the selected prompt, scoped excerpts, risk flags and suggested actions to a local Ollama endpoint bound to `127.0.0.1`. That keeps the open-source model on the server while preserving deterministic retrieval, citations, confidence and governance outside the model.
+
+If the local model is unavailable, slow or returns an empty answer, the endpoint falls back to the deterministic composer and records the fallback in `toolTrace`. This keeps the product operational and audit-friendly instead of coupling availability to a generative model.
 
 ## Frontend
 

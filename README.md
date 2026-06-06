@@ -16,7 +16,7 @@ This is built as a working product for the requested project context: React/Type
 
 - Java 21+, Spring Boot 4.0.6, Web MVC, Validation, Actuator
 - React 19, TypeScript 6, Vite 8
-- REST API with tool-augmented grounding
+- REST API with tool-augmented grounding and optional self-hosted LLM composition
 - Vitest and Spring Boot tests
 - Docker, Docker Compose, Kubernetes manifests
 - GitHub Actions CI
@@ -86,7 +86,20 @@ Response shape:
 }
 ```
 
-The public stage runtime does not require external model credentials. The backend implements a reproducible, tool-augmented RAG flow: intent classification, query expansion, scoped source retrieval, evidence ranking, governance checks and grounded answer composition.
+The backend implements a reproducible, tool-augmented RAG flow: intent classification, query expansion, scoped source retrieval, evidence ranking, governance checks and grounded answer composition.
+
+By default this runs without external model credentials. For a self-hosted GenAI runtime, set:
+
+```bash
+COGNISPACE_LLM_PROVIDER=ollama
+COGNISPACE_LLM_OLLAMA_URL=http://127.0.0.1:11434
+COGNISPACE_LLM_MODEL=mistral
+COGNISPACE_LLM_TIMEOUT_MS=45000
+COGNISPACE_LLM_MAX_OUTPUT_TOKENS=240
+COGNISPACE_LLM_TEMPERATURE=0.18
+```
+
+In Ollama mode the REST endpoint still performs deterministic retrieval, ranking, confidence scoring and governance checks. The local open-source model only composes the final answer from the selected evidence. If the local model is unavailable or times out, the endpoint falls back to the deterministic composer and records that in `toolTrace`.
 
 ## Deployment
 
