@@ -7,9 +7,26 @@ import { SpacePanel } from "./components/SpacePanel";
 import { SystemPanel } from "./components/SystemPanel";
 import { fallbackDocuments, fallbackHealth, fallbackResponse, fallbackSpaces } from "./data/fallback";
 import { askSpace, createDocumentForSpace, loadDocuments, loadHealth, loadSpaces } from "./lib/api";
-import type { AgentResponse, CreateDocumentPayload, KnowledgeSpace, PlatformHealth, SourceDocument } from "./types";
+import type {
+  AgentResponse,
+  ApiState,
+  CreateDocumentPayload,
+  KnowledgeSpace,
+  PlatformHealth,
+  ResponseMode,
+  SourceDocument
+} from "./types";
 
 const defaultPrompt = "Which supplier risks need review before connecting the procurement assistant to external applications?";
+const minimumRunMs = 650;
+
+function timestamp() {
+  return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 export function App() {
   const [documents, setDocuments] = useState<SourceDocument[]>(fallbackDocuments);
@@ -18,9 +35,11 @@ export function App() {
   const [selectedSpaceId, setSelectedSpaceId] = useState(fallbackSpaces[0].id);
   const [prompt, setPrompt] = useState(defaultPrompt);
   const [response, setResponse] = useState<AgentResponse | undefined>(fallbackResponse);
+  const [responseMode, setResponseMode] = useState<ResponseMode>("preview");
+  const [lastUpdated, setLastUpdated] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [creatingSource, setCreatingSource] = useState(false);
-  const [apiState, setApiState] = useState<"offline" | "online">("offline");
+  const [apiState, setApiState] = useState<ApiState>("connecting");
 
   useEffect(() => {
     async function boot() {
@@ -33,10 +52,13 @@ export function App() {
         setSelectedSpaceId(preferredSpace?.id ?? fallbackSpaces[0].id);
         if (preferredSpace) {
           setResponse(await askSpace(preferredSpace.id, defaultPrompt));
+          setResponseMode("live");
+          setLastUpdated(timestamp());
         }
         setApiState("online");
       } catch {
         setApiState("offline");
+        setResponseMode("preview");
       }
     }
 
@@ -61,16 +83,39 @@ export function App() {
     }
 
     setLoading(true);
+    setResponse(undefined);
+    setResponseMode("running");
+    setLastUpdated(undefined);
+    const startedAt = performance.now();
     try {
       const answer = await askSpace(selectedSpace.id, prompt);
+      const elapsed = performance.now() - startedAt;
+      if (elapsed < minimumRunMs) {
+        await wait(minimumRunMs - elapsed);
+      }
       setResponse(answer);
+      setResponseMode("live");
+      setLastUpdated(timestamp());
       setApiState("online");
     } catch {
+      const elapsed = performance.now() - startedAt;
+      if (elapsed < minimumRunMs) {
+        await wait(minimumRunMs - elapsed);
+      }
       setResponse(fallbackResponse);
+      setResponseMode("error");
+      setLastUpdated(timestamp());
       setApiState("offline");
     } finally {
       setLoading(false);
     }
+  }
+
+  function selectSpace(spaceId: string) {
+    setSelectedSpaceId(spaceId);
+    setResponse(undefined);
+    setResponseMode("idle");
+    setLastUpdated(undefined);
   }
 
   async function createSource(payload: CreateDocumentPayload) {
@@ -104,7 +149,9 @@ export function App() {
           <a href="#sources">Sources</a>
           <a href="#api">REST API</a>
         </nav>
-        <span className={`api-state ${apiState}`}>{apiState === "online" ? "Spring Boot API online" : "Fallback mode"}</span>
+        <span className={`api-state ${apiState}`}>
+          {apiState === "online" ? "Live API connected" : apiState === "connecting" ? "Connecting to live API..." : "Static preview mode"}
+        </span>
       </header>
 
       <section className="command-strip">
@@ -117,7 +164,7 @@ export function App() {
 
       <section className="workspace">
         <aside className="left-column" id="spaces">
-          <SpacePanel spaces={spaces} documents={documents} selectedSpaceId={selectedSpaceId} onSelect={setSelectedSpaceId} />
+          <SpacePanel spaces={spaces} documents={documents} selectedSpaceId={selectedSpaceId} onSelect={selectSpace} />
         </aside>
 
         <section className="center-column">
@@ -125,7 +172,10 @@ export function App() {
             selectedSpace={selectedSpace}
             prompt={prompt}
             response={response}
+            responseMode={responseMode}
             loading={loading}
+            apiState={apiState}
+            lastUpdated={lastUpdated}
             onPromptChange={setPrompt}
             onSubmit={submitPrompt}
           />

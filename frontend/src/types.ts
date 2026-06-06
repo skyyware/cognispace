@@ -50,3 +50,7 @@ export interface PlatformHealth {
   apiMode: string;
   generatedAt: string;
 }
+
+export type ApiState = "connecting" | "offline" | "online";
+
+export type ResponseMode = "idle" | "preview" | "running" | "live" | "error";

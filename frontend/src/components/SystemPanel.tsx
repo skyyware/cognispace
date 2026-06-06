@@ -1,8 +1,8 @@
 import { CheckCircle2, CircleDashed, Server, ShieldCheck } from "lucide-react";
-import type { PlatformHealth, SourceDocument } from "../types";
+import type { ApiState, PlatformHealth, SourceDocument } from "../types";
 
 interface SystemPanelProps {
-  apiState: "offline" | "online";
+  apiState: ApiState;
   health: PlatformHealth;
   selectedDocuments: SourceDocument[];
 }
@@ -26,8 +26,8 @@ export function SystemPanel({ apiState, health, selectedDocuments }: SystemPanel
         <article>
           {apiState === "online" ? <CheckCircle2 /> : <CircleDashed />}
           <div>
-            <strong>{apiState === "online" ? "Live REST API" : "Fallback preview"}</strong>
-            <span>{health.apiMode}</span>
+            <strong>{apiState === "online" ? "Live REST API" : apiState === "connecting" ? "Connecting to REST API" : "Static preview"}</strong>
+            <span>{apiState === "connecting" ? "Loading health, spaces and first grounded answer." : health.apiMode}</span>
           </div>
         </article>
         <article>
