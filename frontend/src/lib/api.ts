@@ -50,3 +50,23 @@ export function createDocumentForSpace(spaceId: string, payload: CreateDocumentP
     body: JSON.stringify(payload)
   });
 }
+
+export interface RegistrationPayload {
+  name: string;
+  email: string;
+  company: string;
+  useCase: string;
+}
+
+export interface RegistrationResponse {
+  status: "received";
+  emailSent: boolean;
+  receivedAt: string;
+}
+
+export function submitRegistration(payload: RegistrationPayload) {
+  return request<RegistrationResponse>("/api/registrations", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}

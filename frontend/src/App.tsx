@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { AccessRequestPanel } from "./components/AccessRequestPanel";
 import { ApiContractPanel } from "./components/ApiContractPanel";
 import { ChatWorkbench } from "./components/ChatWorkbench";
 import { DocumentPanel } from "./components/DocumentPanel";
@@ -103,6 +104,7 @@ export function App() {
           <a href="#spaces">Spaces</a>
           <a href="#sources">Sources</a>
           <a href="#api">REST API</a>
+          <a href="#access">Access</a>
         </nav>
         <span className={`api-state ${apiState}`}>{apiState === "online" ? "Spring Boot API online" : "Fallback mode"}</span>
       </header>
@@ -134,6 +136,7 @@ export function App() {
 
         <aside className="right-column" id="api">
           <ApiContractPanel selectedSpace={selectedSpace} />
+          <AccessRequestPanel />
           <SystemPanel apiState={apiState} health={health} selectedDocuments={selectedDocuments} />
         </aside>
       </section>

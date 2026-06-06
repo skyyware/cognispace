@@ -80,6 +80,23 @@ class KnowledgeSpaceControllerTest {
     }
 
     @Test
+    void acceptsWorkspaceAccessRequests() throws Exception {
+        mvc.perform(post("/api/registrations")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "Sascha Dobrochynskyy",
+                      "email": "sascha@skyyware.com",
+                      "company": "Skyyware",
+                      "useCase": "Review CogniSpace for a source-grounded enterprise knowledge workspace."
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("received"))
+            .andExpect(jsonPath("$.receivedAt").exists());
+    }
+
+    @Test
     void storeCanCreateDocumentsAndSpaces() {
         KnowledgeSpaceStore store = new KnowledgeSpaceStore();
         SourceDocument document = store.addDocument(new CreateDocumentRequest(

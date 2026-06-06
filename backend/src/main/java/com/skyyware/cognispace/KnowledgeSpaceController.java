@@ -15,9 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api")
 public class KnowledgeSpaceController {
     private final KnowledgeSpaceStore store;
+    private final RegistrationService registrationService;
 
-    public KnowledgeSpaceController(KnowledgeSpaceStore store) {
+    public KnowledgeSpaceController(KnowledgeSpaceStore store, RegistrationService registrationService) {
         this.store = store;
+        this.registrationService = registrationService;
     }
 
     @GetMapping("/health")
@@ -58,5 +60,10 @@ public class KnowledgeSpaceController {
     @PostMapping("/spaces/{spaceId}/chat")
     AgentResponse chat(@PathVariable String spaceId, @Valid @RequestBody ChatRequest request) {
         return store.answer(spaceId, request);
+    }
+
+    @PostMapping("/registrations")
+    RegistrationResponse register(@Valid @RequestBody RegistrationRequest request) {
+        return registrationService.register(request);
     }
 }

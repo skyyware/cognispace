@@ -2,7 +2,7 @@
 
 CogniSpace is a fullstack GenAI knowledge-space workbench. It lets teams connect internal source documents, scope them into custom cognitive spaces, ask grounded questions and expose answers through a REST API contract.
 
-This is built as a real product slice for the requested project context: React/TypeScript frontend, Java Spring Boot backend, REST APIs, automated tests, Docker and Kubernetes deployment readiness.
+This is built as a working product for the requested project context: React/TypeScript frontend, Java Spring Boot backend, REST APIs, automated tests, Docker and Kubernetes deployment readiness.
 
 ## Product workflow
 
@@ -11,6 +11,7 @@ This is built as a real product slice for the requested project context: React/T
 3. Ask a prompt through the grounded answer workbench.
 4. Receive a deterministic, cited answer with confidence and suggested actions.
 5. Use the generated REST contract to integrate the space into another application.
+6. Register a project context for guided workspace access.
 
 ## Stack
 
@@ -20,6 +21,7 @@ This is built as a real product slice for the requested project context: React/T
 - Vitest and Spring Boot tests
 - Docker, Docker Compose, Kubernetes manifests
 - GitHub Actions CI
+- SMTP-backed workspace access registration
 
 ## Local setup
 
@@ -80,6 +82,22 @@ Response shape:
   "confidence": 0.84
 }
 ```
+
+Access requests:
+
+```http
+POST /api/registrations
+Content-Type: application/json
+
+{
+  "name": "Sascha Dobrochynskyy",
+  "email": "sascha@skyyware.com",
+  "company": "Skyyware",
+  "useCase": "Review CogniSpace for a source-grounded enterprise knowledge workspace."
+}
+```
+
+Access requests are validated by the backend and sent through SMTP configured by environment variables. Required deployment variables include `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `APP_REGISTRATION_MAIL_FROM` and `APP_REGISTRATION_NOTIFY_TO`.
 
 ## Deployment
 
