@@ -13,7 +13,7 @@ export function SpacePanel({ spaces, documents, selectedSpaceId, onSelect }: Spa
       <div className="panel-header">
         <div>
           <h2>Knowledge spaces</h2>
-          <p>Scoped context and application access.</p>
+          <p>Scoped context and application scope.</p>
         </div>
       </div>
       <div className="space-list">
