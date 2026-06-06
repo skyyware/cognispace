@@ -25,10 +25,20 @@ Content-Type: application/json
   "prompt": "How should this answer be exposed?",
   "history": []
 }`}</pre>
+      <div className="endpoint-card compact">
+        <div>
+          <span>Release contract</span>
+          <strong>v1 answer contract · no hidden model state · citations required</strong>
+        </div>
+      </div>
       <div className="contract-grid">
         <article>
           <span>Response</span>
           <strong>answer, sources, actions, confidence, intent, riskFlags, toolTrace</strong>
+        </article>
+        <article>
+          <span>Consumers</span>
+          <strong>{selectedSpace?.allowedApplications.join(", ") ?? "application allowlist required"}</strong>
         </article>
         <article>
           <span>Guardrails</span>

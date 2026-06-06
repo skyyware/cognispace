@@ -90,7 +90,7 @@ public class KnowledgeSpaceStore {
             "Supplier Risk Brain",
             "Answer supplier-risk questions with governed procurement, quality and API context.",
             List.of(supplierRisk.id(), dataPolicy.id(), qualityRunbook.id(), apiDesign.id()),
-            List.of("procurement-assistant", "risk-dashboard", "supplier-portal")
+            List.of("procurement-assistant", "risk-dashboard", "supplier-portal", "contract-insights", "compliance-monitor", "integration-gateway")
         ));
     }
 
@@ -398,6 +398,11 @@ public class KnowledgeSpaceStore {
                     : "Deterministic grounded composer used."
             ))
         );
+        trace.add(new AgentToolCall(
+            "evaluate_answer_quality",
+            "completed",
+            "Checked citation coverage, confidence " + Math.round(confidence * 100) + "% and " + riskFlags.size() + " visible risk flag(s)."
+        ));
         return List.copyOf(trace);
     }
 

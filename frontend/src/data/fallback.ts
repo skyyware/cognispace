@@ -36,7 +36,7 @@ export const fallbackSpaces: KnowledgeSpace[] = [
     name: "Supplier Risk Brain",
     purpose: "Answer supplier-risk questions with governed procurement, quality and API context.",
     documentIds: fallbackDocuments.map((document) => document.id),
-    allowedApplications: ["procurement-assistant", "risk-dashboard", "supplier-portal"],
+    allowedApplications: ["procurement-assistant", "risk-dashboard", "supplier-portal", "contract-insights", "compliance-monitor", "integration-gateway"],
     updatedAt: new Date().toISOString()
   }
 ];
@@ -61,6 +61,11 @@ export const fallbackResponse: AgentResponse = {
       name: "check_governance",
       status: "completed",
       output: "Risk flags require review before automation."
+    },
+    {
+      name: "evaluate_answer_quality",
+      status: "completed",
+      output: "Checked citation coverage, confidence and visible risk flags."
     }
   ],
   suggestedActions: ["Review cited snippets", "Confirm application allowlist", "Expose answer and citations together via REST"],

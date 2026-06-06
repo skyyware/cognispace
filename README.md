@@ -1,6 +1,6 @@
 # CogniSpace
 
-CogniSpace is a fullstack GenAI knowledge-space workbench. It lets teams connect internal source documents, scope them into governed cognitive spaces, ask grounded questions and expose answers through a REST API contract.
+CogniSpace is a fullstack GenAI brain-operations console. It lets teams connect internal source documents, scope them into governed cognitive spaces, run grounded agent answers, evaluate answer quality and expose results through a REST API contract.
 
 This is built as a working product for the requested project context: React/TypeScript frontend, Java Spring Boot backend, REST APIs, automated tests, Docker and Kubernetes deployment readiness.
 
@@ -8,9 +8,11 @@ This is built as a working product for the requested project context: React/Type
 
 1. Select a knowledge space with scoped sources and allowed consuming applications.
 2. Connect a new source document with owner, sensitivity and tags.
-3. Ask a prompt through the grounded answer workbench.
-4. Receive a cited answer with intent, confidence, risk flags, suggested actions and a transparent agent tool run.
-5. Use the generated REST contract to integrate the space into another application while preserving governance signals.
+3. Review the brain lifecycle from source scope to agent policy, API release and evaluation.
+4. Ask a prompt through the grounded answer workbench.
+5. Receive a cited answer with intent, confidence, risk flags, suggested actions, local LLM composition and a transparent agent tool run.
+6. Review quality evaluation, regression prompts and audit events.
+7. Use the REST contract to integrate the brain into another application while preserving governance signals.
 
 ## Stack
 

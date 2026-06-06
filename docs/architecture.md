@@ -1,6 +1,6 @@
 # Architecture
 
-CogniSpace is built as a fullstack product surface for creating source-grounded knowledge spaces.
+CogniSpace is built as a fullstack product surface for operating source-grounded AI brains. The application deliberately separates brain lifecycle, retrieval, policy checks, model composition, API release and quality evaluation so a consuming enterprise application can trust more than the final generated text.
 
 ## Backend
 
@@ -15,7 +15,7 @@ The backend is a Java Spring Boot REST API with an in-memory repository. It expo
 - `POST /api/spaces/{spaceId}/documents`
 - `POST /api/spaces/{spaceId}/chat`
 
-The chat endpoint runs a reproducible, tool-augmented RAG flow against the selected knowledge space. It classifies intent, expands query terms, retrieves scoped sources, ranks evidence, checks governance constraints and composes a cited answer with confidence, risk flags, suggested actions and a visible tool trace.
+The chat endpoint runs a reproducible, tool-augmented RAG flow against the selected knowledge space. It classifies intent, expands query terms, retrieves scoped sources, ranks evidence, checks governance constraints, composes a cited answer with confidence and runs an explicit quality-evaluation step. The response returns risk flags, suggested actions and a visible tool trace.
 
 The composition step is provider-aware. The default runtime uses a deterministic composer and needs no external credentials. Stage can also run `COGNISPACE_LLM_PROVIDER=ollama`, which sends only the selected prompt, scoped excerpts, risk flags and suggested actions to a local Ollama endpoint bound to `127.0.0.1`. The current stage model is `qwen2.5:3b` for responsive CPU inference; `mistral` is installed as a larger alternative. That keeps the open-source model on the server while preserving deterministic retrieval, citations, confidence and governance outside the model.
 
@@ -27,11 +27,14 @@ The frontend is a React and TypeScript workbench. It loads the REST API when ava
 
 Core views:
 
+- Brain lifecycle from sources to scope, agent policy, API release and evaluation
 - Knowledge-space selector
 - Grounded answer workbench
 - Source registry with document ingestion
+- Agent/API readiness with consuming applications, tool permissions and model runtime
 - REST API contract panel
 - Governance/runtime inspector
+- Quality evaluation with citation coverage, regression prompts, policy flags and audit trail
 
 ## Deployment
 

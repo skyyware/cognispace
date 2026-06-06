@@ -3,14 +3,16 @@ import type { KnowledgeSpace, PlatformHealth, SourceDocument } from "../types";
 
 export function MetricStrip({
   health,
+  selectedSpace,
   selectedDocuments,
   spaces
 }: {
   health: PlatformHealth;
+  selectedSpace?: KnowledgeSpace;
   selectedDocuments: SourceDocument[];
   spaces: KnowledgeSpace[];
 }) {
-  const appCount = new Set(spaces.flatMap((space) => space.allowedApplications)).size;
+  const appCount = selectedSpace?.allowedApplications.length ?? new Set(spaces.flatMap((space) => space.allowedApplications)).size;
 
   return (
     <section className="metric-strip" aria-label="Knowledge platform metrics">

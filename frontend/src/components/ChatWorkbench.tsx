@@ -16,28 +16,40 @@ interface ChatWorkbenchProps {
 
 const progressSteps = [
   {
-    key: "classify_intent",
+    keys: ["classify_intent"],
     label: "Analyze request",
     running: "Classifying intent and constraints",
     complete: "Intent classified"
   },
   {
-    key: "retrieve_sources",
+    keys: ["retrieve_sources"],
     label: "Retrieve evidence",
     running: "Selecting scoped documents",
     complete: "Evidence grounded"
   },
   {
-    key: "check_governance",
+    keys: ["rank_evidence"],
+    label: "Rank evidence",
+    running: "Scoring citations and source density",
+    complete: "Evidence ranked"
+  },
+  {
+    keys: ["check_governance"],
     label: "Check governance",
     running: "Evaluating risk and allowlists",
     complete: "Guardrails checked"
   },
   {
-    key: "compose_grounded_answer",
+    keys: ["compose_local_llm_answer", "compose_grounded_answer"],
     label: "Compose answer",
-    running: "Writing response with citations",
+    running: "Composing with bounded model context",
     complete: "Answer composed"
+  },
+  {
+    keys: ["evaluate_answer_quality"],
+    label: "Evaluate quality",
+    running: "Checking citations and policy flags",
+    complete: "Quality evaluated"
   }
 ];
 
@@ -104,9 +116,9 @@ export function ChatWorkbench({
       {progressSteps.map((step, index) => {
         const state = responseMode === "running"
           ? index < activeStepIndex ? "complete" : index === activeStepIndex ? "active" : "queued"
-          : response ? (completedTools.has(step.key) || response.toolTrace.length > 0 ? "complete" : "queued") : "queued";
+          : response ? (step.keys.some((key) => completedTools.has(key)) || response.toolTrace.length > 0 ? "complete" : "queued") : "queued";
         return (
-          <article className={state} key={step.key}>
+          <article className={state} key={step.label}>
             <span className="step-index"><span className="step-index-value">{index + 1}</span></span>
             {state === "complete" ? <CheckCircle2 /> : state === "active" ? <Loader2 className="spin" /> : <CircleDashed />}
             <div>

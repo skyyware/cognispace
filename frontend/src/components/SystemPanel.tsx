@@ -14,7 +14,7 @@ export function SystemPanel({ apiState, health, selectedDocuments }: SystemPanel
   const localLlmMode = health.apiMode.includes("local-open-source-llm");
 
   return (
-    <section className="panel system-panel">
+    <section className="panel system-panel" id="policies">
       <div className="panel-header">
         <div>
           <h2>Governance</h2>

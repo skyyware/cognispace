@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { ApiContractPanel } from "./components/ApiContractPanel";
+import { AgentReadinessPanel } from "./components/AgentReadinessPanel";
+import { BrainLifecyclePanel } from "./components/BrainLifecyclePanel";
 import { ChatWorkbench } from "./components/ChatWorkbench";
 import { DocumentPanel } from "./components/DocumentPanel";
+import { EvaluationPanel } from "./components/EvaluationPanel";
 import { MetricStrip } from "./components/MetricStrip";
 import { SpacePanel } from "./components/SpacePanel";
 import { SystemPanel } from "./components/SystemPanel";
@@ -135,12 +138,14 @@ export function App() {
       <header className="topbar">
         <div>
           <strong className="brand">CogniSpace</strong>
-          <span className="product-context">Cognitive knowledge workspace</span>
+          <span className="product-context">AI Brain Operations Console</span>
         </div>
         <nav aria-label="Primary">
-          <a href="#spaces">Spaces</a>
+          <a href="#spaces">Brains</a>
           <a href="#sources">Sources</a>
+          <a href="#policies">Policies</a>
           <a href="#api">REST API</a>
+          <a href="#evaluation">Evaluation</a>
         </nav>
         <span className={`api-state ${apiState}`}>
           {apiState === "online" ? (localLlmMode ? "Self-hosted LLM connected" : "Live API connected") : apiState === "connecting" ? "Connecting to live API..." : "Static preview mode"}
@@ -152,11 +157,17 @@ export function App() {
           <p>Selected space</p>
           <h1>{selectedSpace?.name ?? "No space selected"}</h1>
         </div>
-        <MetricStrip health={health} selectedDocuments={selectedDocuments} spaces={spaces} />
+          <MetricStrip health={health} selectedDocuments={selectedDocuments} selectedSpace={selectedSpace} spaces={spaces} />
       </section>
 
       <section className="workspace">
         <aside className="left-column" id="spaces">
+          <BrainLifecyclePanel
+            apiState={apiState}
+            documents={selectedDocuments}
+            response={response}
+            selectedSpace={selectedSpace}
+          />
           <SpacePanel spaces={spaces} documents={documents} selectedSpaceId={selectedSpaceId} onSelect={selectSpace} />
         </aside>
 
@@ -173,9 +184,11 @@ export function App() {
             onSubmit={submitPrompt}
           />
           <DocumentPanel documents={selectedDocuments} loading={creatingSource} onCreate={createSource} />
+          <EvaluationPanel documents={selectedDocuments} response={response} selectedSpace={selectedSpace} />
         </section>
 
         <aside className="right-column" id="api">
+          <AgentReadinessPanel health={health} response={response} selectedSpace={selectedSpace} />
           <ApiContractPanel selectedSpace={selectedSpace} />
           <SystemPanel apiState={apiState} health={health} selectedDocuments={selectedDocuments} />
         </aside>
