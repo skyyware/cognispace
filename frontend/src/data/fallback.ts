@@ -74,9 +74,29 @@ export const fallbackResponse: AgentResponse = {
       documentId: "doc-api",
       title: "Agent API integration contract",
       score: 4,
-      excerpts: ["The response contains answer, sources, suggested actions and confidence."]
+      excerpts: ["The response contains answer, sources, suggested actions and confidence."],
+      vectorRelevance: 0.74,
+      matchedTerms: ["api", "agent", "applications"]
     }
-  ]
+  ],
+  evaluation: {
+    citationCoverage: 0.67,
+    answerRelevance: 0.82,
+    policyAdherence: 0.88,
+    groundingGuard: 0.96,
+    decision: "review_required",
+    checks: ["citation_coverage:67%", "answer_relevance:82%", "policy_flags_visible:true", "grounded_sources:1"]
+  },
+  runtime: {
+    provider: "static-preview",
+    model: "deterministic composer",
+    selfHosted: false,
+    fallbackUsed: true,
+    latencyMs: 0,
+    contextSources: 1,
+    serverBinding: "bundled preview data"
+  },
+  apiVersion: "v1"
 };
 
 export const fallbackHealth: PlatformHealth = {

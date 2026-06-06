@@ -24,6 +24,8 @@ export interface GroundingSource {
   title: string;
   score: number;
   excerpts: string[];
+  vectorRelevance: number;
+  matchedTerms: string[];
 }
 
 export interface AgentToolCall {
@@ -40,6 +42,36 @@ export interface AgentResponse {
   intent: string;
   toolTrace: AgentToolCall[];
   riskFlags: string[];
+  evaluation: AnswerEvaluation;
+  runtime: ModelRuntime;
+  apiVersion: string;
+}
+
+export interface AnswerEvaluation {
+  citationCoverage: number;
+  answerRelevance: number;
+  policyAdherence: number;
+  groundingGuard: number;
+  decision: string;
+  checks: string[];
+}
+
+export interface ModelRuntime {
+  provider: string;
+  model: string;
+  selfHosted: boolean;
+  fallbackUsed: boolean;
+  latencyMs: number;
+  contextSources: number;
+  serverBinding: string;
+}
+
+export interface ChatStreamEvent {
+  type: "run_started" | "step" | "answer_delta" | "final";
+  tool?: AgentToolCall | null;
+  delta?: string | null;
+  response?: AgentResponse | null;
+  message?: string | null;
 }
 
 export interface PlatformHealth {

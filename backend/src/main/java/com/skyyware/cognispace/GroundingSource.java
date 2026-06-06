@@ -6,6 +6,8 @@ public record GroundingSource(
     String documentId,
     String title,
     double score,
-    List<String> excerpts
+    List<String> excerpts,
+    double vectorRelevance,
+    List<String> matchedTerms
 ) {
 }

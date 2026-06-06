@@ -9,9 +9,10 @@ import { MetricStrip } from "./components/MetricStrip";
 import { SpacePanel } from "./components/SpacePanel";
 import { SystemPanel } from "./components/SystemPanel";
 import { fallbackDocuments, fallbackHealth, fallbackResponse, fallbackSpaces } from "./data/fallback";
-import { askSpace, createDocumentForSpace, loadDocuments, loadHealth, loadSpaces } from "./lib/api";
+import { askSpaceStream, createDocumentForSpace, loadDocuments, loadHealth, loadSpaces } from "./lib/api";
 import type {
   AgentResponse,
+  AgentToolCall,
   ApiState,
   CreateDocumentPayload,
   KnowledgeSpace,
@@ -21,7 +22,7 @@ import type {
 } from "./types";
 
 const defaultPrompt = "Which supplier risks need review before connecting the procurement assistant to external applications?";
-const minimumRunMs = 3200;
+const minimumRunMs = 1200;
 
 function timestamp() {
   return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -29,6 +30,14 @@ function timestamp() {
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function mergeToolTrace(current: AgentToolCall[], next: AgentToolCall) {
+  const existingIndex = current.findIndex((tool) => tool.name === next.name);
+  if (existingIndex === -1) {
+    return [...current, next];
+  }
+  return current.map((tool, index) => (index === existingIndex ? next : tool));
 }
 
 export function App() {
@@ -40,6 +49,9 @@ export function App() {
   const [response, setResponse] = useState<AgentResponse | undefined>();
   const [responseMode, setResponseMode] = useState<ResponseMode>("idle");
   const [lastUpdated, setLastUpdated] = useState<string | undefined>();
+  const [streamedAnswer, setStreamedAnswer] = useState("");
+  const [streamTools, setStreamTools] = useState<AgentToolCall[]>([]);
+  const [streamMessage, setStreamMessage] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [creatingSource, setCreatingSource] = useState(false);
   const [apiState, setApiState] = useState<ApiState>("connecting");
@@ -88,9 +100,22 @@ export function App() {
     setResponse(undefined);
     setResponseMode("running");
     setLastUpdated(undefined);
+    setStreamedAnswer("");
+    setStreamTools([]);
+    setStreamMessage(undefined);
     const minimumVisibleRun = wait(minimumRunMs);
     try {
-      const answer = await askSpace(selectedSpace.id, prompt);
+      const answer = await askSpaceStream(selectedSpace.id, prompt, (event) => {
+        if (event.type === "run_started" && event.message) {
+          setStreamMessage(event.message);
+        }
+        if (event.type === "step" && event.tool) {
+          setStreamTools((current) => mergeToolTrace(current, event.tool as AgentToolCall));
+        }
+        if (event.type === "answer_delta" && event.delta) {
+          setStreamedAnswer((current) => current + event.delta);
+        }
+      });
       await minimumVisibleRun;
       setResponse(answer);
       setResponseMode("live");
@@ -102,6 +127,9 @@ export function App() {
       setResponseMode("error");
       setLastUpdated(timestamp());
       setApiState("offline");
+      setStreamedAnswer("");
+      setStreamTools([]);
+      setStreamMessage(undefined);
     } finally {
       setLoading(false);
     }
@@ -112,6 +140,9 @@ export function App() {
     setResponse(undefined);
     setResponseMode("idle");
     setLastUpdated(undefined);
+    setStreamedAnswer("");
+    setStreamTools([]);
+    setStreamMessage(undefined);
   }
 
   async function createSource(payload: CreateDocumentPayload) {
@@ -180,6 +211,9 @@ export function App() {
             loading={loading}
             apiState={apiState}
             lastUpdated={lastUpdated}
+            streamedAnswer={streamedAnswer}
+            streamTools={streamTools}
+            streamMessage={streamMessage}
             onPromptChange={setPrompt}
             onSubmit={submitPrompt}
           />

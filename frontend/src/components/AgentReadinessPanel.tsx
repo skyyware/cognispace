@@ -20,23 +20,20 @@ const applicationPurpose: Record<string, string> = {
 };
 
 const toolPermissions = [
-  ["doc.search", "Semantic retrieval", "allowed"],
+  ["doc.search", "Hybrid retrieval", "allowed"],
   ["doc.fetch", "Scoped excerpts", "allowed"],
   ["policy.check", "Allowlist and sensitivity", "allowed"],
   ["llm.compose", "Local answer composition", "server-bound"],
   ["api.respond", "Structured REST response", "allowed"]
 ] as const;
 
-function modelName(apiMode: string) {
-  const match = apiMode.match(/\(([^)]+)\)/);
-  return match?.[1] ?? "deterministic composer";
-}
-
 export function AgentReadinessPanel({ health, response, selectedSpace }: AgentReadinessPanelProps) {
   const localLlmMode = health.apiMode.includes("local-open-source-llm");
   const apiPath = selectedSpace ? `/api/spaces/${selectedSpace.id}/chat` : "/api/spaces/{spaceId}/chat";
-  const localTool = response?.toolTrace.find((tool) => tool.name === "compose_local_llm_answer");
-  const latency = localTool?.output.match(/in ([0-9]+) ms/)?.[1];
+  const runtimeProvider = response?.runtime.provider ?? (localLlmMode ? "ollama" : "deterministic");
+  const runtimeModel = response?.runtime.model ?? (localLlmMode ? "qwen2.5:3b" : "deterministic composer");
+  const latency = response?.runtime.latencyMs;
+  const serverBinding = response?.runtime.serverBinding ?? (localLlmMode ? "server-local Ollama endpoint" : "in-process composer");
 
   return (
     <section className="panel readiness-panel">
@@ -92,19 +89,19 @@ export function AgentReadinessPanel({ health, response, selectedSpace }: AgentRe
         <article>
           <ServerCog />
           <span>Runtime</span>
-          <strong>{localLlmMode ? "Ollama local" : "Grounded composer"}</strong>
+          <strong>{runtimeProvider}</strong>
         </article>
         <article>
           <span>Model</span>
-          <strong>{modelName(health.apiMode)}</strong>
+          <strong>{runtimeModel}</strong>
         </article>
         <article>
           <span>Latency</span>
           <strong>{latency ? `${latency} ms` : "measured per run"}</strong>
         </article>
         <article>
-          <span>Fallback</span>
-          <strong>Enabled</strong>
+          <span>Binding</span>
+          <strong>{serverBinding}</strong>
         </article>
       </div>
     </section>

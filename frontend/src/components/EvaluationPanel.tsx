@@ -18,10 +18,11 @@ function percent(value: number) {
 }
 
 export function EvaluationPanel({ documents, response, selectedSpace }: EvaluationPanelProps) {
-  const citationCoverage = response && documents.length > 0 ? Math.min(1, response.sources.length / Math.min(3, documents.length)) : 0;
-  const relevance = response?.confidence ?? 0;
-  const policyAdherence = response ? (response.riskFlags.length > 0 ? 0.88 : 1) : 0;
-  const hallucinationGuard = response ? (response.sources.length > 0 ? 0.96 : 0.2) : 0;
+  const evaluation = response?.evaluation;
+  const citationCoverage = evaluation?.citationCoverage ?? 0;
+  const relevance = evaluation?.answerRelevance ?? 0;
+  const policyAdherence = evaluation?.policyAdherence ?? 0;
+  const hallucinationGuard = evaluation?.groundingGuard ?? 0;
   const trace = response?.toolTrace ?? [];
 
   return (
@@ -29,9 +30,9 @@ export function EvaluationPanel({ documents, response, selectedSpace }: Evaluati
       <div className="panel-header">
         <div>
           <h2>Quality evaluation</h2>
-          <p>Checks for answer quality, regression behavior and auditability.</p>
+          <p>Backend-evaluated quality, regression behavior and auditability.</p>
         </div>
-        <span className="panel-chip">{response ? "Latest run" : "Awaiting run"}</span>
+        <span className="panel-chip">{response ? response.evaluation.decision : "Awaiting run"}</span>
       </div>
 
       <div className="quality-grid">
@@ -72,6 +73,12 @@ export function EvaluationPanel({ documents, response, selectedSpace }: Evaluati
           <h3>Risk and policy flags</h3>
           <ul>
             {(response?.riskFlags.length ? response.riskFlags : ["No latest run yet."]).map((flag) => <li key={flag}>{flag}</li>)}
+          </ul>
+        </article>
+        <article>
+          <h3>Evaluation checks</h3>
+          <ul>
+            {(response?.evaluation.checks.length ? response.evaluation.checks : [`Ready for ${documents.length} scoped source${documents.length === 1 ? "" : "s"}.`]).map((check) => <li key={check}>{check}</li>)}
           </ul>
         </article>
         <article>

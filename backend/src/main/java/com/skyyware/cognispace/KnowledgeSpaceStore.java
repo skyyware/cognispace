@@ -17,6 +17,9 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class KnowledgeSpaceStore {
+    private static final int VECTOR_DIMENSIONS = 128;
+    private static final String API_VERSION = "v1";
+
     private static final Set<String> STOP_WORDS = Set.of(
         "the", "and", "for", "with", "from", "into", "how", "what", "when", "where", "which",
         "should", "would", "could", "this", "that", "about", "before", "after", "through",
@@ -189,10 +192,15 @@ public class KnowledgeSpaceStore {
                 0.22,
                 intent,
                 List.of(
+                    new AgentToolCall("classify_intent", "completed", "Detected " + intent + "."),
                     new AgentToolCall("retrieve_sources", "completed", "No scoped source matched the prompt terms."),
-                    new AgentToolCall("check_governance", "completed", "Answer blocked because no grounded evidence was available.")
+                    new AgentToolCall("check_governance", "completed", "Answer blocked because no grounded evidence was available."),
+                    new AgentToolCall("evaluate_answer_quality", "completed", "Grounding guard blocked the answer.")
                 ),
-                List.of("No grounded source found")
+                List.of("No grounded source found"),
+                blockedEvaluation(),
+                runtime(Optional.empty(), 0),
+                API_VERSION
             );
         }
 
@@ -217,7 +225,10 @@ public class KnowledgeSpaceStore {
             confidence,
             intent,
             toolTrace(intent, space, sources, confidence, riskFlags, localLlmResult),
-            riskFlags
+            riskFlags,
+            evaluateAnswer(space, sources, confidence, riskFlags),
+            runtime(localLlmResult, sources.size()),
+            API_VERSION
         );
     }
 
@@ -225,20 +236,66 @@ public class KnowledgeSpaceStore {
         String title = document.title().toLowerCase(Locale.ROOT);
         String tags = String.join(" ", document.tags()).toLowerCase(Locale.ROOT);
         String content = document.content().toLowerCase(Locale.ROOT);
-        double score = 0;
+        String searchable = title + " " + tags + " " + content;
+        double lexicalScore = 0;
+        List<String> matchedTerms = new ArrayList<>();
         for (String term : queryTerms) {
             if (title.contains(term)) {
-                score += 4;
+                lexicalScore += 4;
+                matchedTerms.add(term);
             }
             if (tags.contains(term)) {
-                score += 3;
+                lexicalScore += 3;
+                matchedTerms.add(term);
             }
             if (content.contains(term)) {
-                score += 1 + occurrences(content, term) * 0.45;
+                lexicalScore += 1 + occurrences(content, term) * 0.45;
+                matchedTerms.add(term);
             }
         }
+        double vectorRelevance = cosine(featureVector(String.join(" ", queryTerms)), featureVector(searchable));
+        double score = lexicalScore + vectorRelevance * 8;
         List<String> excerpts = excerpts(document.content(), queryTerms);
-        return new GroundingSource(document.id(), document.title(), score, excerpts);
+        return new GroundingSource(
+            document.id(),
+            document.title(),
+            Math.round(score * 100.0) / 100.0,
+            excerpts,
+            Math.round(vectorRelevance * 100.0) / 100.0,
+            matchedTerms.stream().distinct().limit(8).toList()
+        );
+    }
+
+    private double[] featureVector(String value) {
+        double[] vector = new double[VECTOR_DIMENSIONS];
+        for (String term : normalize(value)) {
+            int bucket = Math.floorMod(term.hashCode(), VECTOR_DIMENSIONS);
+            vector[bucket] += 1.0;
+        }
+        double magnitude = magnitude(vector);
+        if (magnitude == 0) {
+            return vector;
+        }
+        for (int index = 0; index < vector.length; index++) {
+            vector[index] = vector[index] / magnitude;
+        }
+        return vector;
+    }
+
+    private double cosine(double[] left, double[] right) {
+        double dot = 0;
+        for (int index = 0; index < Math.min(left.length, right.length); index++) {
+            dot += left[index] * right[index];
+        }
+        return dot;
+    }
+
+    private double magnitude(double[] vector) {
+        double sum = 0;
+        for (double value : vector) {
+            sum += value * value;
+        }
+        return Math.sqrt(sum);
     }
 
     private int occurrences(String value, String term) {
@@ -381,7 +438,7 @@ public class KnowledgeSpaceStore {
     ) {
         List<AgentToolCall> trace = new ArrayList<>();
         trace.add(new AgentToolCall("classify_intent", "completed", "Detected " + intent + "."));
-        trace.add(new AgentToolCall("retrieve_sources", "completed", "Searched " + space.documentIds().size() + " scoped sources and selected " + sources.size() + "."));
+        trace.add(new AgentToolCall("retrieve_sources", "completed", "Ran hybrid lexical/vector retrieval across " + space.documentIds().size() + " scoped sources and selected " + sources.size() + "."));
         trace.add(new AgentToolCall("rank_evidence", "completed", "Top source: " + sources.get(0).title() + " with confidence " + Math.round(confidence * 100) + "%."));
         trace.add(new AgentToolCall("check_governance", "completed", riskFlags.isEmpty() ? "No blocking risk flags." : riskFlags.size() + " risk flag(s) require review."));
         localLlmResult.ifPresentOrElse(
@@ -404,6 +461,73 @@ public class KnowledgeSpaceStore {
             "Checked citation coverage, confidence " + Math.round(confidence * 100) + "% and " + riskFlags.size() + " visible risk flag(s)."
         ));
         return List.copyOf(trace);
+    }
+
+    private AnswerEvaluation evaluateAnswer(
+        KnowledgeSpace space,
+        List<GroundingSource> sources,
+        double confidence,
+        List<String> riskFlags
+    ) {
+        double citationCoverage = sources.isEmpty()
+            ? 0
+            : Math.min(1, sources.size() / (double) Math.max(1, Math.min(3, space.documentIds().size())));
+        double answerRelevance = confidence;
+        double policyAdherence = riskFlags.isEmpty() ? 1 : 0.88;
+        double groundingGuard = sources.isEmpty() ? 0.2 : 0.96;
+        String decision = sources.isEmpty()
+            ? "blocked:no_grounding"
+            : riskFlags.isEmpty() ? "ready_for_api" : "review_required";
+        List<String> checks = new ArrayList<>();
+        checks.add("citation_coverage:" + Math.round(citationCoverage * 100) + "%");
+        checks.add("answer_relevance:" + Math.round(answerRelevance * 100) + "%");
+        checks.add("policy_flags_visible:" + (!riskFlags.isEmpty()));
+        checks.add("grounded_sources:" + sources.size());
+        return new AnswerEvaluation(
+            Math.round(citationCoverage * 100.0) / 100.0,
+            Math.round(answerRelevance * 100.0) / 100.0,
+            Math.round(policyAdherence * 100.0) / 100.0,
+            Math.round(groundingGuard * 100.0) / 100.0,
+            decision,
+            List.copyOf(checks)
+        );
+    }
+
+    private AnswerEvaluation blockedEvaluation() {
+        return new AnswerEvaluation(
+            0,
+            0.22,
+            0.7,
+            0.2,
+            "blocked:no_grounding",
+            List.of("citation_coverage:0%", "answer_relevance:22%", "policy_flags_visible:true", "grounded_sources:0")
+        );
+    }
+
+    private ModelRuntime runtime(Optional<LocalLlmResult> localLlmResult, int contextSources) {
+        if (localLlmResult.isPresent()) {
+            LocalLlmResult result = localLlmResult.get();
+            return new ModelRuntime(
+                "ollama",
+                result.model(),
+                true,
+                false,
+                result.durationMs(),
+                contextSources,
+                localLlmClient.serverBinding()
+            );
+        }
+
+        boolean ollamaFallback = localLlmClient.isOllamaEnabled();
+        return new ModelRuntime(
+            localLlmClient.provider(),
+            ollamaFallback ? localLlmClient.model() : "deterministic composer",
+            ollamaFallback,
+            ollamaFallback,
+            0,
+            contextSources,
+            localLlmClient.serverBinding()
+        );
     }
 
     private List<String> safeList(List<String> values) {

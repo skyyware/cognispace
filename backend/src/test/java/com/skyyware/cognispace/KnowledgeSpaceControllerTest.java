@@ -43,6 +43,10 @@ class KnowledgeSpaceControllerTest {
             .andExpect(jsonPath("$.confidence").exists())
             .andExpect(jsonPath("$.intent").value("agent-api-integration"))
             .andExpect(jsonPath("$.toolTrace[0].name").value("classify_intent"))
+            .andExpect(jsonPath("$.sources[0].vectorRelevance").exists())
+            .andExpect(jsonPath("$.evaluation.decision").exists())
+            .andExpect(jsonPath("$.runtime.provider").exists())
+            .andExpect(jsonPath("$.apiVersion").value("v1"))
             .andExpect(jsonPath("$.riskFlags[0]").exists());
     }
 
@@ -98,6 +102,15 @@ class KnowledgeSpaceControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"\",\"owner\":\"AI\",\"sensitivity\":\"internal\",\"tags\":[],\"content\":\"\"}"))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void exposesOpenApiContract() throws Exception {
+        mvc.perform(get("/api/openapi"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.openapi").value("3.1.0"))
+            .andExpect(jsonPath("$.paths['/api/spaces/{spaceId}/chat/stream']").exists())
+            .andExpect(jsonPath("$.components.schemas.AgentResponse.properties.runtime").exists());
     }
 
     @Test

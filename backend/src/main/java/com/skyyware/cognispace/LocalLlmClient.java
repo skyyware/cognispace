@@ -89,6 +89,14 @@ public class LocalLlmClient {
         return model;
     }
 
+    public String provider() {
+        return provider;
+    }
+
+    public String serverBinding() {
+        return isOllamaEnabled() ? "server-local Ollama endpoint" : "in-process deterministic composer";
+    }
+
     public boolean isOllamaEnabled() {
         return "ollama".equals(provider);
     }

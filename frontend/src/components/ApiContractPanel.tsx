@@ -25,16 +25,22 @@ Content-Type: application/json
   "prompt": "How should this answer be exposed?",
   "history": []
 }`}</pre>
+      <pre>{`Streaming:
+POST ${path}/stream
+Accept: application/x-ndjson
+
+OpenAPI:
+GET /api/openapi`}</pre>
       <div className="endpoint-card compact">
         <div>
           <span>Release contract</span>
-          <strong>v1 answer contract · no hidden model state · citations required</strong>
+          <strong>v1 answer contract · streaming events · no hidden model state · citations required</strong>
         </div>
       </div>
       <div className="contract-grid">
         <article>
           <span>Response</span>
-          <strong>answer, sources, actions, confidence, intent, riskFlags, toolTrace</strong>
+          <strong>answer, sources, actions, confidence, intent, riskFlags, toolTrace, runtime, evaluation</strong>
         </article>
         <article>
           <span>Consumers</span>

@@ -9,6 +9,9 @@ public record AgentResponse(
     double confidence,
     String intent,
     List<AgentToolCall> toolTrace,
-    List<String> riskFlags
+    List<String> riskFlags,
+    AnswerEvaluation evaluation,
+    ModelRuntime runtime,
+    String apiVersion
 ) {
 }

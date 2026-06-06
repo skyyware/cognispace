@@ -10,15 +10,16 @@ This is built as a working product for the requested project context: React/Type
 2. Connect a new source document with owner, sensitivity and tags.
 3. Review the brain lifecycle from source scope to agent policy, API release and evaluation.
 4. Ask a prompt through the grounded answer workbench.
-5. Receive a cited answer with intent, confidence, risk flags, suggested actions, local LLM composition and a transparent agent tool run.
-6. Review quality evaluation, regression prompts and audit events.
-7. Use the REST contract to integrate the brain into another application while preserving governance signals.
+5. Watch the live API stream pipeline events and answer chunks.
+6. Receive a cited answer with intent, confidence, risk flags, suggested actions, local LLM composition, runtime metadata and a transparent agent tool run.
+7. Review backend-generated quality evaluation, regression prompts and audit events.
+8. Use the REST or streaming contract to integrate the brain into another application while preserving governance signals.
 
 ## Stack
 
 - Java 21+, Spring Boot 4.0.6, Web MVC, Validation, Actuator
 - React 19, TypeScript 6, Vite 8
-- REST API with tool-augmented grounding and optional self-hosted LLM composition
+- REST API with hybrid lexical/vector retrieval, tool-augmented grounding and optional self-hosted LLM composition
 - Vitest and Spring Boot tests
 - Docker, Docker Compose, Kubernetes manifests
 - GitHub Actions CI
@@ -84,11 +85,45 @@ Response shape:
   "toolTrace": [
     { "name": "classify_intent", "status": "completed", "output": "Detected agent-api-integration." }
   ],
-  "riskFlags": ["Restricted or confidential source in scope: enforce the application allowlist."]
+  "riskFlags": ["Restricted or confidential source in scope: enforce the application allowlist."],
+  "evaluation": {
+    "citationCoverage": 1,
+    "answerRelevance": 0.84,
+    "policyAdherence": 0.88,
+    "groundingGuard": 0.96,
+    "decision": "review_required",
+    "checks": ["citation_coverage:100%", "answer_relevance:84%", "policy_flags_visible:true", "grounded_sources:3"]
+  },
+  "runtime": {
+    "provider": "ollama",
+    "model": "qwen2.5:3b",
+    "selfHosted": true,
+    "fallbackUsed": false,
+    "latencyMs": 1380,
+    "contextSources": 3,
+    "serverBinding": "server-local Ollama endpoint"
+  },
+  "apiVersion": "v1"
 }
 ```
 
-The backend implements a reproducible, tool-augmented RAG flow: intent classification, query expansion, scoped source retrieval, evidence ranking, governance checks and grounded answer composition.
+Streaming endpoint:
+
+```http
+POST /api/spaces/{spaceId}/chat/stream
+Content-Type: application/json
+Accept: application/x-ndjson
+```
+
+The stream emits `run_started`, `step`, `answer_delta` and `final` events. The final event contains the same `AgentResponse` contract as the non-streaming endpoint.
+
+OpenAPI contract:
+
+```http
+GET /api/openapi
+```
+
+The backend implements a reproducible, tool-augmented RAG flow: intent classification, query expansion, hybrid lexical/vector retrieval, evidence ranking, governance checks, grounded answer composition and explicit backend quality evaluation.
 
 By default this runs without external model credentials. For a self-hosted GenAI runtime, set:
 

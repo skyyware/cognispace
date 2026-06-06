@@ -52,6 +52,13 @@ export function SystemPanel({ apiState, health, selectedDocuments }: SystemPanel
             <span>Spring Boot, Docker and Kubernetes manifests.</span>
           </div>
         </article>
+        <article>
+          <CheckCircle2 />
+          <div>
+            <strong>OpenAPI contract</strong>
+            <span>Machine-readable API definition at /api/openapi.</span>
+          </div>
+        </article>
       </div>
     </section>
   );

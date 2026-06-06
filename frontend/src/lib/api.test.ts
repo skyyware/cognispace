@@ -7,5 +7,7 @@ describe("fallback data", () => {
     expect(fallbackResponse.sources[0].excerpts[0]).toContain("answer, sources");
     expect(fallbackResponse.toolTrace[0].name).toBe("classify_intent");
     expect(fallbackResponse.riskFlags[0]).toContain("allowlist");
+    expect(fallbackResponse.runtime.model).toBe("deterministic composer");
+    expect(fallbackResponse.evaluation.decision).toBe("review_required");
   });
 });

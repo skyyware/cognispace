@@ -10,6 +10,9 @@ interface ChatWorkbenchProps {
   loading: boolean;
   apiState: ApiState;
   lastUpdated?: string;
+  streamedAnswer: string;
+  streamTools: AgentResponse["toolTrace"];
+  streamMessage?: string;
   onPromptChange: (value: string) => void;
   onSubmit: () => void;
 }
@@ -60,7 +63,7 @@ function modeCopy(responseMode: ResponseMode, apiState: ApiState) {
   if (responseMode === "running") {
     return {
       title: "Answer is being generated",
-      detail: "The pipeline is running in sequence: request analysis, evidence retrieval, governance check, then answer composition."
+      detail: "The API is streaming pipeline events and answer chunks from the live run."
     };
   }
   if (responseMode === "live") {
@@ -87,6 +90,28 @@ function modeCopy(responseMode: ResponseMode, apiState: ApiState) {
   };
 }
 
+function runtimeCopy(
+  response: AgentResponse | undefined,
+  streamMessage: string | undefined,
+  hasLocalLlmTool: boolean,
+  fallbackCopy: string
+) {
+  if (response?.runtime) {
+    const runtimeType = response.runtime.selfHosted ? "Self-hosted" : "In-process";
+    const outcome = response.runtime.fallbackUsed
+      ? "fallback composer used"
+      : `${response.runtime.latencyMs} ms model latency`;
+    return `${runtimeType} ${response.runtime.provider} runtime · ${response.runtime.model} · ${outcome}.`;
+  }
+  if (streamMessage) {
+    return streamMessage;
+  }
+  if (hasLocalLlmTool) {
+    return "This response is grounded by the Spring Boot API and composed by a self-hosted open-source LLM.";
+  }
+  return fallbackCopy;
+}
+
 export function ChatWorkbench({
   selectedSpace,
   prompt,
@@ -95,27 +120,35 @@ export function ChatWorkbench({
   loading,
   apiState,
   lastUpdated,
+  streamedAnswer,
+  streamTools,
+  streamMessage,
   onPromptChange,
   onSubmit
 }: ChatWorkbenchProps) {
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [visibleAnswer, setVisibleAnswer] = useState("");
-  const completedTools = useMemo(() => new Set(response?.toolTrace.map((tool) => tool.name) ?? []), [response]);
+  const toolState = response?.toolTrace ?? streamTools;
+  const completedTools = useMemo(
+    () => new Set(toolState.filter((tool) => tool.status === "completed").map((tool) => tool.name)),
+    [toolState]
+  );
   const localLlmTool = useMemo(
-    () => response?.toolTrace.find((tool) => tool.name === "compose_local_llm_answer"),
-    [response]
+    () => toolState.find((tool) => tool.name === "compose_local_llm_answer"),
+    [toolState]
   );
   const copy = modeCopy(responseMode, apiState);
-  const runtimeDetail = localLlmTool
-    ? "This response was grounded by the Spring Boot API and composed by a self-hosted open-source LLM."
-    : copy.detail;
+  const runtimeDetail = runtimeCopy(response, streamMessage, Boolean(localLlmTool), copy.detail);
   const answerStatus = responseMode === "live" ? "live" : responseMode === "error" ? "error" : responseMode === "running" ? "running" : "preview";
   const activeStep = progressSteps[activeStepIndex];
   const progressTrail = (
     <div className="run-steps" aria-label="Agent progress">
       {progressSteps.map((step, index) => {
+        const matchingTools = toolState.filter((tool) => step.keys.includes(tool.name));
+        const hasCompleted = matchingTools.some((tool) => tool.status === "completed") || (response && response.toolTrace.length > 0);
+        const hasRunning = matchingTools.some((tool) => tool.status === "running");
         const state = responseMode === "running"
-          ? index < activeStepIndex ? "complete" : index === activeStepIndex ? "active" : "queued"
+          ? hasCompleted ? "complete" : hasRunning || index === activeStepIndex ? "active" : "queued"
           : response ? (step.keys.some((key) => completedTools.has(key)) || response.toolTrace.length > 0 ? "complete" : "queued") : "queued";
         return (
           <article className={state} key={step.label}>
@@ -132,6 +165,26 @@ export function ChatWorkbench({
   );
 
   useEffect(() => {
+    if (responseMode === "running" && streamTools.length > 0) {
+      let runningToolName = "";
+      for (let index = streamTools.length - 1; index >= 0; index--) {
+        if (streamTools[index].status === "running") {
+          runningToolName = streamTools[index].name;
+          break;
+        }
+      }
+      const runningIndex = progressSteps.findIndex((step) => step.keys.includes(runningToolName));
+      if (runningIndex >= 0) {
+        setActiveStepIndex(runningIndex);
+        return undefined;
+      }
+      const completedCount = progressSteps.filter((step) =>
+        step.keys.some((key) => streamTools.some((tool) => tool.name === key && tool.status === "completed"))
+      ).length;
+      setActiveStepIndex(Math.min(completedCount, progressSteps.length - 1));
+      return undefined;
+    }
+
     if (responseMode !== "running") {
       setActiveStepIndex(response ? progressSteps.length - 1 : 0);
       return undefined;
@@ -143,11 +196,16 @@ export function ChatWorkbench({
     }, 760);
 
     return () => window.clearInterval(interval);
-  }, [response, responseMode]);
+  }, [response, responseMode, streamTools]);
 
   useEffect(() => {
     if (!response || responseMode === "running") {
       setVisibleAnswer("");
+      return undefined;
+    }
+
+    if (streamedAnswer && streamedAnswer.trim() === response.answer.trim()) {
+      setVisibleAnswer(response.answer);
       return undefined;
     }
 
@@ -167,7 +225,7 @@ export function ChatWorkbench({
     }, 24);
 
     return () => window.clearInterval(interval);
-  }, [response, responseMode]);
+  }, [response, responseMode, streamedAnswer]);
 
   return (
     <section className="panel workbench">
@@ -211,7 +269,9 @@ export function ChatWorkbench({
             <span>{response.sources.length} sources selected</span>
             <span>{response.riskFlags.length} risk flags</span>
             <span>{response.toolTrace.length} tools completed</span>
-            {localLlmTool ? <span>self-hosted LLM used</span> : null}
+            <span>API {response.apiVersion}</span>
+            {response.runtime.selfHosted ? <span>{response.runtime.model}</span> : null}
+            {response.runtime.fallbackUsed ? <span>fallback used</span> : <span>{response.runtime.latencyMs} ms latency</span>}
           </div>
           <p className="answer-text">
             {visibleAnswer}
@@ -255,12 +315,19 @@ export function ChatWorkbench({
             <span />
           </div>
           <strong>{activeStep.label}</strong>
-          <p>{activeStep.running}</p>
-          <div className="draft-lines" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
+          <p>{streamTools.find((tool) => progressSteps[activeStepIndex].keys.includes(tool.name))?.output ?? activeStep.running}</p>
+          {streamedAnswer ? (
+            <p className="answer-text streaming-answer">
+              {streamedAnswer}
+              <span className="answer-cursor" aria-hidden="true" />
+            </p>
+          ) : (
+            <div className="draft-lines" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+          )}
         </div>
       ) : (
         <div className="empty-response">
