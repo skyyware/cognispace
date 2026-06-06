@@ -89,7 +89,14 @@ export function ChatWorkbench({
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [visibleAnswer, setVisibleAnswer] = useState("");
   const completedTools = useMemo(() => new Set(response?.toolTrace.map((tool) => tool.name) ?? []), [response]);
+  const localLlmTool = useMemo(
+    () => response?.toolTrace.find((tool) => tool.name === "compose_local_llm_answer"),
+    [response]
+  );
   const copy = modeCopy(responseMode, apiState);
+  const runtimeDetail = localLlmTool
+    ? "This response was grounded by the Spring Boot API and composed by a self-hosted open-source LLM."
+    : copy.detail;
   const answerStatus = responseMode === "live" ? "live" : responseMode === "error" ? "error" : responseMode === "running" ? "running" : "preview";
   const activeStep = progressSteps[activeStepIndex];
   const progressTrail = (
@@ -175,7 +182,7 @@ export function ChatWorkbench({
         <div className="status-copy">
           <span>{apiState === "online" ? "Live runtime" : apiState === "connecting" ? "Connecting" : "Preview runtime"}</span>
           <strong>{copy.title}</strong>
-          <p>{copy.detail}</p>
+          <p>{runtimeDetail}</p>
         </div>
         <small>{lastUpdated ? `Updated ${lastUpdated}` : responseMode === "running" ? "Working now" : "Awaiting run"}</small>
       </div>
@@ -192,6 +199,7 @@ export function ChatWorkbench({
             <span>{response.sources.length} sources selected</span>
             <span>{response.riskFlags.length} risk flags</span>
             <span>{response.toolTrace.length} tools completed</span>
+            {localLlmTool ? <span>self-hosted LLM used</span> : null}
           </div>
           <p className="answer-text">
             {visibleAnswer}
