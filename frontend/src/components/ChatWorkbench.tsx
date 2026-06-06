@@ -34,10 +34,18 @@ export function ChatWorkbench({ selectedSpace, prompt, response, loading, onProm
       {response ? (
         <div className="answer-card">
           <div className="confidence">
-            <span>Confidence</span>
+            <span>Intent: {response.intent}</span>
             <strong>{Math.round(response.confidence * 100)}%</strong>
           </div>
           <p>{response.answer}</p>
+          {response.riskFlags.length > 0 ? (
+            <>
+              <h3>Risk flags</h3>
+              <ul className="risk-list">
+                {response.riskFlags.map((flag) => <li key={flag}>{flag}</li>)}
+              </ul>
+            </>
+          ) : null}
           <h3>Grounding sources</h3>
           {response.sources.map((source) => (
             <article key={source.documentId}>
@@ -45,6 +53,16 @@ export function ChatWorkbench({ selectedSpace, prompt, response, loading, onProm
               {source.excerpts.map((excerpt) => <blockquote key={excerpt}>{excerpt}</blockquote>)}
             </article>
           ))}
+          <h3>Agent tool run</h3>
+          <div className="tool-trace">
+            {response.toolTrace.map((tool) => (
+              <article key={tool.name}>
+                <span>{tool.status}</span>
+                <strong>{tool.name.replaceAll("_", " ")}</strong>
+                <p>{tool.output}</p>
+              </article>
+            ))}
+          </div>
           <h3>Suggested actions</h3>
           <ul>
             {response.suggestedActions.map((action) => <li key={action}>{action}</li>)}

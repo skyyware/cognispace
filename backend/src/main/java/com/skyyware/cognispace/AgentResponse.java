@@ -6,6 +6,9 @@ public record AgentResponse(
     String answer,
     List<GroundingSource> sources,
     List<String> suggestedActions,
-    double confidence
+    double confidence,
+    String intent,
+    List<AgentToolCall> toolTrace,
+    List<String> riskFlags
 ) {
 }

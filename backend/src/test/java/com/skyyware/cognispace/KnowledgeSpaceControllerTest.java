@@ -40,7 +40,28 @@ class KnowledgeSpaceControllerTest {
                 .content("{\"prompt\":\"How do we expose REST APIs for agent applications?\",\"history\":[]}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sources[0].title").exists())
-            .andExpect(jsonPath("$.confidence").exists());
+            .andExpect(jsonPath("$.confidence").exists())
+            .andExpect(jsonPath("$.intent").value("agent-api-integration"))
+            .andExpect(jsonPath("$.toolTrace[0].name").value("classify_intent"))
+            .andExpect(jsonPath("$.riskFlags[0]").exists());
+    }
+
+    @Test
+    void flagsSupplierRiskBeforeExternalExposure() throws Exception {
+        String spaceId = mvc.perform(get("/api/spaces"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .split("\"id\":\"")[1]
+            .split("\"")[0];
+
+        mvc.perform(post("/api/spaces/" + spaceId + "/chat")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"prompt\":\"Should supplier risk answers be published to the supplier portal?\",\"history\":[]}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.intent").value("supplier-risk-review"))
+            .andExpect(jsonPath("$.riskFlags[0]").exists())
+            .andExpect(jsonPath("$.toolTrace[3].name").value("check_governance"));
     }
 
     @Test

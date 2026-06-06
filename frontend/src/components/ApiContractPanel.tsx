@@ -28,11 +28,11 @@ Content-Type: application/json
       <div className="contract-grid">
         <article>
           <span>Response</span>
-          <strong>answer, sources, actions, confidence</strong>
+          <strong>answer, sources, actions, confidence, intent, riskFlags, toolTrace</strong>
         </article>
         <article>
           <span>Guardrails</span>
-          <strong>space scope + allowed applications</strong>
+          <strong>space scope, allowed applications, citations, human review</strong>
         </article>
       </div>
     </section>

@@ -44,6 +44,25 @@ export const fallbackSpaces: KnowledgeSpace[] = [
 export const fallbackResponse: AgentResponse = {
   answer: "Use the selected space as bounded context, keep source citations attached to the answer, confirm sensitivity and allowed applications, and route supplier-critical findings to human review before publishing them through the REST endpoint.",
   confidence: 0.82,
+  intent: "agent-api-integration",
+  riskFlags: ["Restricted or confidential source in scope: enforce the application allowlist."],
+  toolTrace: [
+    {
+      name: "classify_intent",
+      status: "completed",
+      output: "Detected agent-api-integration."
+    },
+    {
+      name: "retrieve_sources",
+      status: "completed",
+      output: "Selected scoped sources for a grounded answer."
+    },
+    {
+      name: "check_governance",
+      status: "completed",
+      output: "Risk flags require review before automation."
+    }
+  ],
   suggestedActions: ["Review cited snippets", "Confirm application allowlist", "Expose answer and citations together via REST"],
   sources: [
     {

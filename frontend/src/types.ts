@@ -26,11 +26,20 @@ export interface GroundingSource {
   excerpts: string[];
 }
 
+export interface AgentToolCall {
+  name: string;
+  status: string;
+  output: string;
+}
+
 export interface AgentResponse {
   answer: string;
   sources: GroundingSource[];
   suggestedActions: string[];
   confidence: number;
+  intent: string;
+  toolTrace: AgentToolCall[];
+  riskFlags: string[];
 }
 
 export interface PlatformHealth {

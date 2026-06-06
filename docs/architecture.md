@@ -15,7 +15,9 @@ The backend is a Java Spring Boot REST API with an in-memory repository. It expo
 - `POST /api/spaces/{spaceId}/documents`
 - `POST /api/spaces/{spaceId}/chat`
 
-The chat endpoint does deterministic grounding against the selected knowledge space. This keeps the runtime useful without external model credentials while preserving the product mechanics required for a GenAI platform: scoping, source retrieval, citations, confidence and suggested next actions.
+The chat endpoint runs a reproducible, tool-augmented RAG flow against the selected knowledge space. It classifies intent, expands query terms, retrieves scoped sources, ranks evidence, checks governance constraints and composes a cited answer with confidence, risk flags, suggested actions and a visible tool trace.
+
+This keeps the runtime useful without external model credentials while preserving the product mechanics required for a GenAI platform: scoping, source retrieval, citations, confidence, governance and downstream API integration.
 
 ## Frontend
 

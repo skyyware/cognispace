@@ -19,8 +19,21 @@ public class KnowledgeSpaceStore {
     private static final Set<String> STOP_WORDS = Set.of(
         "the", "and", "for", "with", "from", "into", "how", "what", "when", "where", "which",
         "should", "would", "could", "this", "that", "about", "before", "after", "through",
+        "need", "needs", "does", "will", "them", "they", "have", "has", "do",
         "are", "our", "their", "eine", "einer", "eines", "und", "oder", "wie", "was", "vor",
         "nach", "mit", "aus", "fuer", "für", "der", "die", "das"
+    );
+
+    private static final Map<String, List<String>> QUERY_EXPANSIONS = Map.of(
+        "agent", List.of("assistant", "applications", "api"),
+        "agents", List.of("assistant", "applications", "api"),
+        "ai", List.of("assistant", "generated", "knowledge"),
+        "rest", List.of("endpoint", "api", "response"),
+        "api", List.of("endpoint", "integration", "applications"),
+        "risk", List.of("supplier-risk", "quality", "review"),
+        "supplier", List.of("procurement", "quality", "review"),
+        "figma", List.of("react", "mockups", "frontend"),
+        "frontend", List.of("react", "figma", "mockups")
     );
 
     private final Map<String, SourceDocument> documents = new ConcurrentHashMap<>();
@@ -143,12 +156,14 @@ public class KnowledgeSpaceStore {
         int restricted = (int) documents.values().stream()
             .filter(document -> Set.of("restricted", "confidential").contains(document.sensitivity()))
             .count();
-        return new PlatformHealth("ready", spaces.size(), documents.size(), restricted, "source-grounded-rest", Instant.now());
+        return new PlatformHealth("ready", spaces.size(), documents.size(), restricted, "tool-augmented-rag", Instant.now());
     }
 
     public AgentResponse answer(String spaceId, ChatRequest request) {
         KnowledgeSpace space = findSpace(spaceId).orElseThrow(() -> new KnowledgeSpaceNotFoundException(spaceId));
-        List<String> queryTerms = normalize(request.prompt());
+        String prompt = request.prompt();
+        String intent = detectIntent(prompt);
+        List<String> queryTerms = expandTerms(normalize(prompt));
         List<GroundingSource> sources = space.documentIds().stream()
             .map(documents::get)
             .filter(document -> document != null)
@@ -160,23 +175,31 @@ public class KnowledgeSpaceStore {
 
         if (sources.isEmpty()) {
             return new AgentResponse(
-                "I could not ground this question in the selected knowledge space. Add a matching source or rephrase the prompt.",
+                "I could not ground this question in the selected knowledge space. Add a matching source, narrow the scope or rephrase the prompt before exposing an answer to another application.",
                 List.of(),
-                List.of("Add a source document", "Review knowledge-space scope"),
-                0.22
+                List.of("Add a source document", "Review knowledge-space scope", "Keep the response out of external applications until evidence is available"),
+                0.22,
+                intent,
+                List.of(
+                    new AgentToolCall("retrieve_sources", "completed", "No scoped source matched the prompt terms."),
+                    new AgentToolCall("check_governance", "completed", "Answer blocked because no grounded evidence was available.")
+                ),
+                List.of("No grounded source found")
             );
         }
 
-        String sourceTitles = sources.stream().map(GroundingSource::title).collect(Collectors.joining(", "));
-        String answer = "For \"" + request.prompt() + "\", the selected space points to " + sourceTitles
-            + ". Use the space as a bounded context, keep source citations attached to the answer, confirm sensitivity and allowed applications, and route supplier-critical findings to human review before publishing them through the REST endpoint.";
-
         double confidence = Math.min(0.94, 0.5 + sources.stream().mapToDouble(GroundingSource::score).sum() / 24.0);
+        confidence = Math.round(confidence * 100.0) / 100.0;
+        List<String> riskFlags = riskFlags(prompt, space, sources, confidence);
+        String answer = composeAnswer(prompt, intent, space, sources, riskFlags);
         return new AgentResponse(
             answer,
             sources,
-            List.of("Review cited snippets", "Confirm application allowlist", "Route high-risk findings to human review", "Expose answer and citations together via REST"),
-            Math.round(confidence * 100.0) / 100.0
+            suggestedActions(intent, riskFlags),
+            confidence,
+            intent,
+            toolTrace(intent, space, sources, confidence, riskFlags),
+            riskFlags
         );
     }
 
@@ -187,17 +210,27 @@ public class KnowledgeSpaceStore {
         double score = 0;
         for (String term : queryTerms) {
             if (title.contains(term)) {
-                score += 3;
+                score += 4;
             }
             if (tags.contains(term)) {
-                score += 2;
+                score += 3;
             }
             if (content.contains(term)) {
-                score += 1;
+                score += 1 + occurrences(content, term) * 0.45;
             }
         }
         List<String> excerpts = excerpts(document.content(), queryTerms);
         return new GroundingSource(document.id(), document.title(), score, excerpts);
+    }
+
+    private int occurrences(String value, String term) {
+        int count = 0;
+        int index = value.indexOf(term);
+        while (index >= 0) {
+            count++;
+            index = value.indexOf(term, index + term.length());
+        }
+        return count;
     }
 
     private List<String> excerpts(String content, List<String> queryTerms) {
@@ -213,11 +246,121 @@ public class KnowledgeSpaceStore {
     }
 
     private List<String> normalize(String value) {
-        return List.of(value.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+")).stream()
+        return List.of(value.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}-]+")).stream()
             .filter(term -> term.length() > 2)
             .filter(term -> !STOP_WORDS.contains(term))
             .distinct()
             .toList();
+    }
+
+    private List<String> expandTerms(List<String> terms) {
+        LinkedHashSet<String> expanded = new LinkedHashSet<>(terms);
+        for (String term : terms) {
+            expanded.addAll(QUERY_EXPANSIONS.getOrDefault(term, List.of()));
+        }
+        return List.copyOf(expanded);
+    }
+
+    private String detectIntent(String prompt) {
+        String normalized = prompt.toLowerCase(Locale.ROOT);
+        if (containsAny(normalized, "rest", "api", "endpoint", "connect", "integration", "external applications")) {
+            return "agent-api-integration";
+        }
+        if (containsAny(normalized, "supplier", "risk", "quality", "review", "procurement")) {
+            return "supplier-risk-review";
+        }
+        if (containsAny(normalized, "figma", "frontend", "react", "mockup")) {
+            return "frontend-delivery";
+        }
+        return "knowledge-answer";
+    }
+
+    private boolean containsAny(String value, String... needles) {
+        for (String needle : needles) {
+            if (value.contains(needle)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<String> riskFlags(String prompt, KnowledgeSpace space, List<GroundingSource> sources, double confidence) {
+        List<String> flags = new ArrayList<>();
+        boolean restrictedSource = sources.stream()
+            .map(source -> documents.get(source.documentId()))
+            .filter(document -> document != null)
+            .anyMatch(document -> Set.of("restricted", "confidential").contains(document.sensitivity()));
+        String normalized = prompt.toLowerCase(Locale.ROOT);
+
+        if (restrictedSource) {
+            flags.add("Restricted or confidential source in scope: enforce the application allowlist.");
+        }
+        if (containsAny(normalized, "external", "portal", "customer", "publish", "public")) {
+            flags.add("External exposure requested: keep citations and confidence visible in the consuming application.");
+        }
+        if (containsAny(normalized, "supplier", "risk", "quality", "critical")) {
+            flags.add("Supplier-critical context: route high-risk findings to human review.");
+        }
+        if (space.allowedApplications().isEmpty()) {
+            flags.add("No consuming application allowlist configured.");
+        }
+        if (confidence < 0.65) {
+            flags.add("Low evidence density: add or attach a more specific source.");
+        }
+        return flags;
+    }
+
+    private String composeAnswer(String prompt, String intent, KnowledgeSpace space, List<GroundingSource> sources, List<String> riskFlags) {
+        String sourceTitles = sources.stream().map(GroundingSource::title).collect(Collectors.joining(", "));
+        String allowedApps = space.allowedApplications().isEmpty()
+            ? "no configured consuming applications"
+            : String.join(", ", space.allowedApplications());
+
+        if ("agent-api-integration".equals(intent)) {
+            return "Use \"" + space.name() + "\" as a bounded agent context. Call POST /api/spaces/" + space.id()
+                + "/chat with the prompt and conversation history, then render the answer together with sources, confidence and suggested actions. The strongest evidence is "
+                + sourceTitles + ". Before connecting an external app, keep the allowlist explicit (" + allowedApps
+                + "), preserve citations in the UI and block automation whenever risk flags are present.";
+        }
+        if ("supplier-risk-review".equals(intent)) {
+            return "Before publishing a supplier-risk answer, verify owner, sensitivity, supplier segment and allowed consuming application. The selected space grounds that decision in "
+                + sourceTitles + ". High-risk supplier or quality findings should remain a decision-support signal, not an autonomous action: show the cited snippets, confidence and manual-review action together.";
+        }
+        if ("frontend-delivery".equals(intent)) {
+            return "Treat the Figma or product mockup as the interaction contract: build the React surface, wire it to the REST response shape and keep answer, sources, confidence and actions visible as first-class UI state. The selected evidence points to "
+                + sourceTitles + ", so the implementation should include tests around API shape, grounding visibility and deployment readiness.";
+        }
+        return "For \"" + prompt + "\", the selected space grounds the answer in " + sourceTitles
+            + ". Use the space as bounded context, keep citations attached, show confidence and route sensitive findings through the configured governance path.";
+    }
+
+    private List<String> suggestedActions(String intent, List<String> riskFlags) {
+        List<String> actions = new ArrayList<>();
+        actions.add("Review cited snippets");
+        if ("agent-api-integration".equals(intent)) {
+            actions.add("Expose answer, sources, actions and confidence in one API response");
+            actions.add("Validate the consuming application against the allowlist");
+        } else if ("supplier-risk-review".equals(intent)) {
+            actions.add("Confirm supplier owner and sensitivity before external exposure");
+            actions.add("Route high-risk findings to Procurement or Quality review");
+        } else {
+            actions.add("Confirm knowledge-space scope");
+            actions.add("Keep citations visible in the consuming workflow");
+        }
+        if (!riskFlags.isEmpty()) {
+            actions.add("Resolve risk flags before automation");
+        }
+        return actions.stream().distinct().toList();
+    }
+
+    private List<AgentToolCall> toolTrace(String intent, KnowledgeSpace space, List<GroundingSource> sources, double confidence, List<String> riskFlags) {
+        return List.of(
+            new AgentToolCall("classify_intent", "completed", "Detected " + intent + "."),
+            new AgentToolCall("retrieve_sources", "completed", "Searched " + space.documentIds().size() + " scoped sources and selected " + sources.size() + "."),
+            new AgentToolCall("rank_evidence", "completed", "Top source: " + sources.get(0).title() + " with confidence " + Math.round(confidence * 100) + "%."),
+            new AgentToolCall("check_governance", "completed", riskFlags.isEmpty() ? "No blocking risk flags." : riskFlags.size() + " risk flag(s) require review."),
+            new AgentToolCall("compose_grounded_answer", "completed", "Answer composed with citations, actions and confidence.")
+        );
     }
 
     private List<String> safeList(List<String> values) {
