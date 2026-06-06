@@ -16,8 +16,3 @@ management:
     web:
       exposure:
         include: health,info
-
-app:
-  registration:
-    notify-to: ${APP_REGISTRATION_NOTIFY_TO:admin@stage.dev}
-    mail-from: ${APP_REGISTRATION_MAIL_FROM:admin@stage.dev}
