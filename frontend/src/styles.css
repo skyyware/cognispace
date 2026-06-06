@@ -261,10 +261,8 @@ p {
 
 .workbench textarea,
 .source-form textarea,
-.access-form textarea,
 .source-form input,
-.source-form select,
-.access-form input {
+.source-form select {
   width: 100%;
   border: 1px solid #cfd7e2;
   border-radius: 7px;
@@ -275,10 +273,8 @@ p {
 
 .workbench textarea:focus,
 .source-form textarea:focus,
-.access-form textarea:focus,
 .source-form input:focus,
-.source-form select:focus,
-.access-form input:focus {
+.source-form select:focus {
   border-color: #c1121f;
   box-shadow: 0 0 0 3px rgba(193, 18, 31, 0.08);
 }
@@ -291,8 +287,7 @@ p {
 }
 
 .workbench button,
-.source-form button,
-.access-form button {
+.source-form button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -309,14 +304,12 @@ p {
 }
 
 .workbench button:hover,
-.source-form button:hover,
-.access-form button:hover {
+.source-form button:hover {
   background: #272b31;
 }
 
 .workbench button:disabled,
-.source-form button:disabled,
-.access-form button:disabled {
+.source-form button:disabled {
   border-color: #d5dbe3;
   background: #edf1f5;
   color: #8a94a3;
@@ -404,32 +397,6 @@ blockquote {
 
 .source-form textarea {
   min-height: 88px;
-  padding: 10px;
-  resize: vertical;
-}
-
-.access-form {
-  display: grid;
-  gap: 10px;
-}
-
-.access-form label {
-  display: grid;
-  gap: 7px;
-  color: #6b7280;
-  font-size: 0.72rem;
-  font-weight: 850;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.access-form input {
-  min-height: 38px;
-  padding: 0 10px;
-}
-
-.access-form textarea {
-  min-height: 104px;
   padding: 10px;
   resize: vertical;
 }
