@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class LocalLlmClient {
     private static final String DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434";
-    private static final String DEFAULT_MODEL = "mistral";
+    private static final String DEFAULT_MODEL = "qwen2.5:3b";
 
     private final String provider;
     private final String ollamaUrl;

@@ -93,13 +93,13 @@ By default this runs without external model credentials. For a self-hosted GenAI
 ```bash
 COGNISPACE_LLM_PROVIDER=ollama
 COGNISPACE_LLM_OLLAMA_URL=http://127.0.0.1:11434
-COGNISPACE_LLM_MODEL=mistral
+COGNISPACE_LLM_MODEL=qwen2.5:3b
 COGNISPACE_LLM_TIMEOUT_MS=45000
 COGNISPACE_LLM_MAX_OUTPUT_TOKENS=240
 COGNISPACE_LLM_TEMPERATURE=0.18
 ```
 
-In Ollama mode the REST endpoint still performs deterministic retrieval, ranking, confidence scoring and governance checks. The local open-source model only composes the final answer from the selected evidence. If the local model is unavailable or times out, the endpoint falls back to the deterministic composer and records that in `toolTrace`.
+In Ollama mode the REST endpoint still performs deterministic retrieval, ranking, confidence scoring and governance checks. The local open-source model only composes the final answer from the selected evidence. If the local model is unavailable or times out, the endpoint falls back to the deterministic composer and records that in `toolTrace`. Stage currently uses `qwen2.5:3b` for responsive CPU inference; `mistral` is also installed as a larger alternative.
 
 ## Deployment
 
