@@ -92,6 +92,25 @@ export function ChatWorkbench({
   const copy = modeCopy(responseMode, apiState);
   const answerStatus = responseMode === "live" ? "live" : responseMode === "error" ? "error" : responseMode === "running" ? "running" : "preview";
   const activeStep = progressSteps[activeStepIndex];
+  const progressTrail = (
+    <div className="run-steps" aria-label="Agent progress">
+      {progressSteps.map((step, index) => {
+        const state = responseMode === "running"
+          ? index < activeStepIndex ? "complete" : index === activeStepIndex ? "active" : "queued"
+          : response ? (completedTools.has(step.key) || response.toolTrace.length > 0 ? "complete" : "queued") : "queued";
+        return (
+          <article className={state} key={step.key}>
+            <span className="step-index">{index + 1}</span>
+            {state === "complete" ? <CheckCircle2 /> : state === "active" ? <Loader2 className="spin" /> : <CircleDashed />}
+            <div>
+              <strong>{step.label}</strong>
+              <span>{state === "complete" ? step.complete : state === "active" ? step.running : "Waiting"}</span>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
 
   useEffect(() => {
     if (responseMode !== "running") {
@@ -138,7 +157,7 @@ export function ChatWorkbench({
           <h2>AI Workbench</h2>
           <p>{selectedSpace?.name ?? "No space selected"}</p>
         </div>
-        <span className="panel-chip">No preload</span>
+        <span className="panel-chip">On-demand</span>
       </div>
       <label htmlFor="prompt">Question</label>
       <textarea
@@ -161,23 +180,7 @@ export function ChatWorkbench({
         <small>{lastUpdated ? `Updated ${lastUpdated}` : responseMode === "running" ? "Working now" : "Awaiting run"}</small>
       </div>
 
-      <div className="run-steps" aria-label="Agent progress">
-        {progressSteps.map((step, index) => {
-          const state = responseMode === "running"
-            ? index < activeStepIndex ? "complete" : index === activeStepIndex ? "active" : "queued"
-            : response ? (completedTools.has(step.key) || response.toolTrace.length > 0 ? "complete" : "queued") : "queued";
-          return (
-            <article className={state} key={step.key}>
-              <span className="step-index">{index + 1}</span>
-              {state === "complete" ? <CheckCircle2 /> : state === "active" ? <Loader2 className="spin" /> : <CircleDashed />}
-              <div>
-                <strong>{step.label}</strong>
-                <span>{state === "complete" ? step.complete : state === "active" ? step.running : "Waiting"}</span>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+      {response ? null : progressTrail}
 
       {response ? (
         <div className="answer-card">
@@ -241,10 +244,11 @@ export function ChatWorkbench({
         </div>
       ) : (
         <div className="empty-response">
-          <strong>No answer loaded.</strong>
-          <p>Run the question to generate a fresh response with visible pipeline steps, sources, governance flags and tool trace.</p>
+          <strong>Ready for live run.</strong>
+          <p>Submit the question to generate a fresh response with visible pipeline steps, sources, governance flags and tool trace.</p>
         </div>
       )}
+      {response ? progressTrail : null}
     </section>
   );
 }

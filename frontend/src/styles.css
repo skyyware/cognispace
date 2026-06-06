@@ -136,7 +136,7 @@ p {
   grid-template-columns: minmax(320px, 0.9fr) minmax(520px, 1.1fr);
   gap: 18px;
   align-items: end;
-  padding: 28px 0 18px;
+  padding: 24px 0 16px;
 }
 
 .command-strip p,
@@ -174,8 +174,8 @@ p {
 }
 
 .metric-strip article {
-  min-height: 112px;
-  padding: 16px;
+  min-height: 96px;
+  padding: 14px;
   display: grid;
   align-content: space-between;
 }
@@ -186,11 +186,16 @@ p {
   color: var(--signal-red);
 }
 
+.metric-strip svg {
+  width: 18px;
+  height: 18px;
+}
+
 .metric-strip strong {
   display: block;
-  margin-top: 12px;
+  margin-top: 10px;
   color: var(--ink);
-  font-size: 2rem;
+  font-size: 1.72rem;
   line-height: 1;
 }
 
@@ -467,8 +472,8 @@ p {
 }
 
 .run-steps article.complete {
-  border-color: #b7ddc5;
-  background: #f5fbf7;
+  border-color: #d7dee8;
+  background: #fbfcfd;
 }
 
 .run-steps article.active {
@@ -521,6 +526,7 @@ p {
 
 .run-steps article.complete .step-index {
   border-color: #8fcaa7;
+  background: #f3fbf6;
   color: var(--success);
 }
 
@@ -887,10 +893,32 @@ blockquote {
   }
 
   .metric-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .metric-strip article {
+    min-height: 88px;
+  }
+
+  .center-column {
+    order: 1;
+  }
+
+  .left-column {
+    order: 2;
+  }
+
+  .right-column {
+    order: 3;
   }
 
   .run-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .metric-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -911,25 +939,36 @@ blockquote {
   }
 
   .command-strip {
-    padding-top: 22px;
+    gap: 12px;
+    padding: 16px 0 12px;
   }
 
-  .center-column {
-    order: 1;
+  .command-strip h1 {
+    font-size: 1.58rem;
+    line-height: 1.06;
   }
 
-  .left-column {
-    order: 2;
+  .metric-strip article {
+    min-height: 76px;
+    padding: 11px;
   }
 
-  .right-column {
-    order: 3;
+  .metric-strip strong {
+    font-size: 1.42rem;
+    margin-top: 6px;
   }
 
-  .metric-strip,
+  .metric-strip svg {
+    width: 15px;
+    height: 15px;
+  }
+
   .field-grid,
-  .run-steps,
   .tool-trace {
+    grid-template-columns: 1fr;
+  }
+
+  .run-steps {
     grid-template-columns: 1fr;
   }
 

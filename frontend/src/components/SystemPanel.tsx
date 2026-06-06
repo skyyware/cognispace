@@ -27,7 +27,7 @@ export function SystemPanel({ apiState, health, selectedDocuments }: SystemPanel
           {apiState === "online" ? <CheckCircle2 /> : <CircleDashed />}
           <div>
             <strong>{apiState === "online" ? "Live REST API" : apiState === "connecting" ? "Connecting to REST API" : "Static preview"}</strong>
-            <span>{apiState === "connecting" ? "Loading health, spaces and first grounded answer." : health.apiMode}</span>
+            <span>{apiState === "connecting" ? "Loading health, spaces and source scope." : health.apiMode}</span>
           </div>
         </article>
         <article>
