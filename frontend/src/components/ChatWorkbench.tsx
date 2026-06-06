@@ -1,4 +1,5 @@
-import { BrainCircuit, CheckCircle2, CircleDashed, Loader2, Send } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, CircleDashed, Loader2, Send } from "lucide-react";
 import type { AgentResponse, ApiState, KnowledgeSpace, ResponseMode } from "../types";
 
 interface ChatWorkbenchProps {
@@ -14,17 +15,40 @@ interface ChatWorkbenchProps {
 }
 
 const progressSteps = [
-  { key: "classify_intent", label: "Intent", hint: "Classify request" },
-  { key: "retrieve_sources", label: "Sources", hint: "Retrieve scoped evidence" },
-  { key: "check_governance", label: "Governance", hint: "Evaluate risk flags" },
-  { key: "compose_grounded_answer", label: "Answer", hint: "Compose cited output" }
+  {
+    key: "classify_intent",
+    label: "Analyze request",
+    running: "Classifying intent and constraints",
+    complete: "Intent classified"
+  },
+  {
+    key: "retrieve_sources",
+    label: "Retrieve evidence",
+    running: "Selecting scoped documents",
+    complete: "Evidence grounded"
+  },
+  {
+    key: "check_governance",
+    label: "Check governance",
+    running: "Evaluating risk and allowlists",
+    complete: "Guardrails checked"
+  },
+  {
+    key: "compose_grounded_answer",
+    label: "Compose answer",
+    running: "Writing response with citations",
+    complete: "Answer composed"
+  }
 ];
+
+const revealChunkSize = 9;
+const reducedMotionQuery = "(prefers-reduced-motion: reduce)";
 
 function modeCopy(responseMode: ResponseMode, apiState: ApiState) {
   if (responseMode === "running") {
     return {
-      title: "Agent run in progress",
-      detail: "Classifying intent, retrieving sources and checking governance before composing an answer."
+      title: "Answer is being generated",
+      detail: "The pipeline is running in sequence: request analysis, evidence retrieval, governance check, then answer composition."
     };
   }
   if (responseMode === "live") {
@@ -41,13 +65,13 @@ function modeCopy(responseMode: ResponseMode, apiState: ApiState) {
   }
   if (responseMode === "preview" || apiState !== "online") {
     return {
-      title: "Preview data visible",
-      detail: "Reference data is visible while CogniSpace connects to the live API."
+      title: "Preview runtime available",
+      detail: "Submit a question to see the same pipeline against bundled review data."
     };
   }
   return {
-    title: "Ready for a live run",
-    detail: "Ask the selected knowledge space to generate a fresh grounded response."
+    title: "Ready to answer",
+    detail: "No answer is preloaded. Run the question to watch the knowledge space assemble a grounded response."
   };
 }
 
@@ -62,20 +86,61 @@ export function ChatWorkbench({
   onPromptChange,
   onSubmit
 }: ChatWorkbenchProps) {
-  const completedTools = new Set(response?.toolTrace.map((tool) => tool.name) ?? []);
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
+  const [visibleAnswer, setVisibleAnswer] = useState("");
+  const completedTools = useMemo(() => new Set(response?.toolTrace.map((tool) => tool.name) ?? []), [response]);
   const copy = modeCopy(responseMode, apiState);
   const answerStatus = responseMode === "live" ? "live" : responseMode === "error" ? "error" : responseMode === "running" ? "running" : "preview";
+  const activeStep = progressSteps[activeStepIndex];
+
+  useEffect(() => {
+    if (responseMode !== "running") {
+      setActiveStepIndex(response ? progressSteps.length - 1 : 0);
+      return undefined;
+    }
+
+    setActiveStepIndex(0);
+    const interval = window.setInterval(() => {
+      setActiveStepIndex((current) => Math.min(current + 1, progressSteps.length - 1));
+    }, 760);
+
+    return () => window.clearInterval(interval);
+  }, [response, responseMode]);
+
+  useEffect(() => {
+    if (!response || responseMode === "running") {
+      setVisibleAnswer("");
+      return undefined;
+    }
+
+    if (window.matchMedia(reducedMotionQuery).matches) {
+      setVisibleAnswer(response.answer);
+      return undefined;
+    }
+
+    setVisibleAnswer("");
+    let cursor = 0;
+    const interval = window.setInterval(() => {
+      cursor = Math.min(cursor + revealChunkSize, response.answer.length);
+      setVisibleAnswer(response.answer.slice(0, cursor));
+      if (cursor >= response.answer.length) {
+        window.clearInterval(interval);
+      }
+    }, 24);
+
+    return () => window.clearInterval(interval);
+  }, [response, responseMode]);
 
   return (
     <section className="panel workbench">
       <div className="panel-header">
         <div>
-          <h2>Grounded answer</h2>
+          <h2>AI Workbench</h2>
           <p>{selectedSpace?.name ?? "No space selected"}</p>
         </div>
-        <BrainCircuit />
+        <span className="panel-chip">No preload</span>
       </div>
-      <label htmlFor="prompt">Prompt</label>
+      <label htmlFor="prompt">Question</label>
       <textarea
         id="prompt"
         value={prompt}
@@ -84,7 +149,7 @@ export function ChatWorkbench({
       />
       <button type="button" onClick={onSubmit} disabled={!selectedSpace || loading || prompt.trim().length === 0}>
         {loading ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
-        {loading ? "Running agent..." : "Ask selected space"}
+        {loading ? "Generating answer..." : "Run governed answer"}
       </button>
 
       <div className={`run-status ${answerStatus}`}>
@@ -99,14 +164,15 @@ export function ChatWorkbench({
       <div className="run-steps" aria-label="Agent progress">
         {progressSteps.map((step, index) => {
           const state = responseMode === "running"
-            ? index === 0 ? "active" : "queued"
-            : completedTools.has(step.key) ? "complete" : "queued";
+            ? index < activeStepIndex ? "complete" : index === activeStepIndex ? "active" : "queued"
+            : response ? (completedTools.has(step.key) || response.toolTrace.length > 0 ? "complete" : "queued") : "queued";
           return (
             <article className={state} key={step.key}>
+              <span className="step-index">{index + 1}</span>
               {state === "complete" ? <CheckCircle2 /> : state === "active" ? <Loader2 className="spin" /> : <CircleDashed />}
               <div>
                 <strong>{step.label}</strong>
-                <span>{step.hint}</span>
+                <span>{state === "complete" ? step.complete : state === "active" ? step.running : "Waiting"}</span>
               </div>
             </article>
           );
@@ -124,7 +190,10 @@ export function ChatWorkbench({
             <span>{response.riskFlags.length} risk flags</span>
             <span>{response.toolTrace.length} tools completed</span>
           </div>
-          <p>{response.answer}</p>
+          <p className="answer-text">
+            {visibleAnswer}
+            {visibleAnswer.length < response.answer.length ? <span className="answer-cursor" aria-hidden="true" /> : null}
+          </p>
           {response.riskFlags.length > 0 ? (
             <>
               <h3>Risk flags</h3>
@@ -155,12 +224,27 @@ export function ChatWorkbench({
             {response.suggestedActions.map((action) => <li key={action}>{action}</li>)}
           </ul>
         </div>
-      ) : responseMode !== "running" ? (
-        <div className="empty-response">
-          <strong>No answer for this space yet.</strong>
-          <p>Run the selected space to generate a live grounded answer with sources, governance flags and a tool trace.</p>
+      ) : responseMode === "running" ? (
+        <div className="answer-draft" aria-live="polite">
+          <div className="generation-mark">
+            <span />
+            <span />
+            <span />
+          </div>
+          <strong>{activeStep.label}</strong>
+          <p>{activeStep.running}</p>
+          <div className="draft-lines" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
         </div>
-      ) : null}
+      ) : (
+        <div className="empty-response">
+          <strong>No answer loaded.</strong>
+          <p>Run the question to generate a fresh response with visible pipeline steps, sources, governance flags and tool trace.</p>
+        </div>
+      )}
     </section>
   );
 }

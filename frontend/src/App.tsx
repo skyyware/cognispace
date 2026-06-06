@@ -18,7 +18,7 @@ import type {
 } from "./types";
 
 const defaultPrompt = "Which supplier risks need review before connecting the procurement assistant to external applications?";
-const minimumRunMs = 650;
+const minimumRunMs = 3200;
 
 function timestamp() {
   return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -34,8 +34,8 @@ export function App() {
   const [health, setHealth] = useState<PlatformHealth>(fallbackHealth);
   const [selectedSpaceId, setSelectedSpaceId] = useState(fallbackSpaces[0].id);
   const [prompt, setPrompt] = useState(defaultPrompt);
-  const [response, setResponse] = useState<AgentResponse | undefined>(fallbackResponse);
-  const [responseMode, setResponseMode] = useState<ResponseMode>("preview");
+  const [response, setResponse] = useState<AgentResponse | undefined>();
+  const [responseMode, setResponseMode] = useState<ResponseMode>("idle");
   const [lastUpdated, setLastUpdated] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [creatingSource, setCreatingSource] = useState(false);
@@ -50,15 +50,13 @@ export function App() {
         setSpaces(nextSpaces);
         setHealth(nextHealth);
         setSelectedSpaceId(preferredSpace?.id ?? fallbackSpaces[0].id);
-        if (preferredSpace) {
-          setResponse(await askSpace(preferredSpace.id, defaultPrompt));
-          setResponseMode("live");
-          setLastUpdated(timestamp());
-        }
+        setResponse(undefined);
+        setResponseMode("idle");
         setApiState("online");
       } catch {
         setApiState("offline");
-        setResponseMode("preview");
+        setResponse(undefined);
+        setResponseMode("idle");
       }
     }
 
@@ -86,22 +84,16 @@ export function App() {
     setResponse(undefined);
     setResponseMode("running");
     setLastUpdated(undefined);
-    const startedAt = performance.now();
+    const minimumVisibleRun = wait(minimumRunMs);
     try {
       const answer = await askSpace(selectedSpace.id, prompt);
-      const elapsed = performance.now() - startedAt;
-      if (elapsed < minimumRunMs) {
-        await wait(minimumRunMs - elapsed);
-      }
+      await minimumVisibleRun;
       setResponse(answer);
       setResponseMode("live");
       setLastUpdated(timestamp());
       setApiState("online");
     } catch {
-      const elapsed = performance.now() - startedAt;
-      if (elapsed < minimumRunMs) {
-        await wait(minimumRunMs - elapsed);
-      }
+      await minimumVisibleRun;
       setResponse(fallbackResponse);
       setResponseMode("error");
       setLastUpdated(timestamp());
