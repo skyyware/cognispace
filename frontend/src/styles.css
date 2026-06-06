@@ -510,9 +510,9 @@ p {
 }
 
 .step-index {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
   width: 24px;
   height: 24px;
   border: 1px solid #cfd7e2;
@@ -521,7 +521,15 @@ p {
   color: #667085;
   font-size: 0.72rem;
   font-weight: 900;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
+  text-align: center;
+}
+
+.step-index-value {
+  display: block;
+  min-width: 1ch;
+  transform: translateY(-0.5px);
 }
 
 .run-steps article.complete .step-index {
@@ -543,7 +551,7 @@ p {
   line-height: 1.2;
 }
 
-.run-steps span {
+.run-steps article > div > span {
   display: block;
   margin-top: 3px;
   color: #667085;

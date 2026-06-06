@@ -100,7 +100,7 @@ export function ChatWorkbench({
           : response ? (completedTools.has(step.key) || response.toolTrace.length > 0 ? "complete" : "queued") : "queued";
         return (
           <article className={state} key={step.key}>
-            <span className="step-index">{index + 1}</span>
+            <span className="step-index"><span className="step-index-value">{index + 1}</span></span>
             {state === "complete" ? <CheckCircle2 /> : state === "active" ? <Loader2 className="spin" /> : <CircleDashed />}
             <div>
               <strong>{step.label}</strong>
