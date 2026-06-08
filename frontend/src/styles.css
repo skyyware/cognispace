@@ -358,6 +358,14 @@ p {
   resize: vertical;
 }
 
+.input-hint {
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .workbench button,
 .source-form button {
   display: inline-flex;

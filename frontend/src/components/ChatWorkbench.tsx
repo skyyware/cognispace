@@ -243,8 +243,19 @@ export function ChatWorkbench({
         id="prompt"
         value={prompt}
         onChange={(event) => onPromptChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+            return;
+          }
+
+          event.preventDefault();
+          if (selectedSpace && !loading && prompt.trim().length > 0) {
+            onSubmit();
+          }
+        }}
         placeholder="Ask a question that must stay inside the selected knowledge space..."
       />
+      <p className="input-hint">Enter to run · Shift+Enter for a new line</p>
       <button type="button" onClick={onSubmit} disabled={!selectedSpace || loading || prompt.trim().length === 0}>
         {loading ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
         {loading ? "Generating answer..." : "Run governed answer"}
