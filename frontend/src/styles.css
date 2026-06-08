@@ -1324,6 +1324,12 @@ blockquote {
     flex-wrap: wrap;
   }
 
+  .topbar {
+    align-items: flex-start;
+    row-gap: 16px;
+    padding-bottom: 12px;
+  }
+
   .api-state {
     margin-left: 0;
   }
