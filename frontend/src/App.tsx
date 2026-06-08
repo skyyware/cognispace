@@ -46,6 +46,7 @@ export function App() {
   const [health, setHealth] = useState<PlatformHealth>(fallbackHealth);
   const [selectedSpaceId, setSelectedSpaceId] = useState(fallbackSpaces[0].id);
   const [prompt, setPrompt] = useState(defaultPrompt);
+  const [submittedPrompt, setSubmittedPrompt] = useState<string | undefined>();
   const [response, setResponse] = useState<AgentResponse | undefined>();
   const [responseMode, setResponseMode] = useState<ResponseMode>("idle");
   const [lastUpdated, setLastUpdated] = useState<string | undefined>();
@@ -92,11 +93,14 @@ export function App() {
   );
 
   async function submitPrompt() {
-    if (!selectedSpace || prompt.trim().length === 0) {
+    const nextPrompt = prompt.trim();
+    if (!selectedSpace || nextPrompt.length === 0) {
       return;
     }
 
     setLoading(true);
+    setSubmittedPrompt(nextPrompt);
+    setPrompt("");
     setResponse(undefined);
     setResponseMode("running");
     setLastUpdated(undefined);
@@ -105,7 +109,7 @@ export function App() {
     setStreamMessage(undefined);
     const minimumVisibleRun = wait(minimumRunMs);
     try {
-      const answer = await askSpaceStream(selectedSpace.id, prompt, (event) => {
+      const answer = await askSpaceStream(selectedSpace.id, nextPrompt, (event) => {
         if (event.type === "run_started" && event.message) {
           setStreamMessage(event.message);
         }
@@ -140,6 +144,7 @@ export function App() {
     setResponse(undefined);
     setResponseMode("idle");
     setLastUpdated(undefined);
+    setSubmittedPrompt(undefined);
     setStreamedAnswer("");
     setStreamTools([]);
     setStreamMessage(undefined);
@@ -188,17 +193,20 @@ export function App() {
           <p>Selected space</p>
           <h1>{selectedSpace?.name ?? "No space selected"}</h1>
         </div>
-          <MetricStrip health={health} selectedDocuments={selectedDocuments} selectedSpace={selectedSpace} spaces={spaces} />
+        <MetricStrip health={health} selectedDocuments={selectedDocuments} selectedSpace={selectedSpace} spaces={spaces} />
+      </section>
+
+      <section className="lifecycle-band">
+        <BrainLifecyclePanel
+          apiState={apiState}
+          documents={selectedDocuments}
+          response={response}
+          selectedSpace={selectedSpace}
+        />
       </section>
 
       <section className="workspace">
         <aside className="left-column" id="spaces">
-          <BrainLifecyclePanel
-            apiState={apiState}
-            documents={selectedDocuments}
-            response={response}
-            selectedSpace={selectedSpace}
-          />
           <SpacePanel spaces={spaces} documents={documents} selectedSpaceId={selectedSpaceId} onSelect={selectSpace} />
         </aside>
 
@@ -206,6 +214,7 @@ export function App() {
           <ChatWorkbench
             selectedSpace={selectedSpace}
             prompt={prompt}
+            submittedPrompt={submittedPrompt}
             response={response}
             responseMode={responseMode}
             loading={loading}

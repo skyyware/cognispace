@@ -5,6 +5,7 @@ import type { AgentResponse, ApiState, KnowledgeSpace, ResponseMode } from "../t
 interface ChatWorkbenchProps {
   selectedSpace?: KnowledgeSpace;
   prompt: string;
+  submittedPrompt?: string;
   response?: AgentResponse;
   responseMode: ResponseMode;
   loading: boolean;
@@ -115,6 +116,7 @@ function runtimeCopy(
 export function ChatWorkbench({
   selectedSpace,
   prompt,
+  submittedPrompt,
   response,
   responseMode,
   loading,
@@ -256,6 +258,13 @@ export function ChatWorkbench({
         </div>
         <small>{lastUpdated ? `Updated ${lastUpdated}` : responseMode === "running" ? "Working now" : "Awaiting run"}</small>
       </div>
+
+      {submittedPrompt ? (
+        <div className="submitted-question">
+          <span>Submitted question</span>
+          <p>{submittedPrompt}</p>
+        </div>
+      ) : null}
 
       {response ? null : progressTrail}
 
